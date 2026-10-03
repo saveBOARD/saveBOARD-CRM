@@ -12,7 +12,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 3 | `20261003000300_crm_logic_and_views.sql` | ERP deal sync, match suggestions, chase list, company ERP panel, pipeline view | No |
 | 4 | `20261003000400_hubspot_staging_and_load.sql` | Staging tables, country/city/owner maps, the contacts and companies loader | No |
 | 5 | `20261003000500_seed_profiles.sql` | CRM users. **Fill in the email addresses first.** | No |
-| - | `../scripts/verify_after_migration.sql` | 8 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
+| - | `../scripts/verify_after_migration.sql` | 9 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
 

@@ -8,9 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "db:start": "node scripts/local-db.mjs start",
+    "db:reset": "node scripts/local-db.mjs reset",
+    "db:verify": "node scripts/local-db.mjs verify",
+    "db:stop": "node scripts/local-db.mjs stop",
+    "test:db": "vitest run --project db"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -30,6 +35,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "supabase": "^2.119.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.3"

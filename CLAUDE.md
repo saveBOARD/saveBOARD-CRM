@@ -13,6 +13,7 @@ Read `docs/DESIGN.md` first. It is the design brief and the source of truth for 
 - Next.js 16 (App Router, TypeScript), React 19, Tailwind v4, lucide-react, clsx, Zod. UI follows `docs/erp-reference/Design.md` (same tokens and patterns as the ERP), except dates: day/month/year (see below)
 - Package manager: **npm**. Node 22 or later
 - Commands: `npm run dev` (http://localhost:3000), `npm run lint`, `npm run typecheck`, `npm test` (Vitest), `npm run check` (all three; run before every commit), `npm run build`
+- Local database (Docker Desktop must be running): `npm run db:start`, `npm run db:reset` (ERP schema + made-up ERP data, then every migration twice, then the verify checks; writes a throwaway `crm_app` login to `.env.local`), `npm run test:db` (integration tests as `crm_app`), `npm run db:stop`. It uses its own Supabase workdir `local-db/` with automatic migrations off; never change `[db.migrations]` in `supabase/config.toml`, because that would make `db push` skip migrations on the live project
 - Display formats live in `src/lib/format.ts`. Use them; don't format money or dates inline
 
 @AGENTS.md

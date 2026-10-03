@@ -31,6 +31,15 @@ with checks as (
          )
 
   union all
+  select 'crm_app can SELECT every erp_read view (the app needs them)',
+         exists (select 1 from information_schema.tables t where t.table_schema = 'erp_read')
+         and not exists (
+           select 1 from information_schema.tables t
+           where t.table_schema = 'erp_read'
+             and not has_table_privilege('crm_app', format('%I.%I', t.table_schema, t.table_name), 'select')
+         )
+
+  union all
   select 'no cost, password, token or notes column is exposed in erp_read',
          not exists (
            select 1 from information_schema.columns c
