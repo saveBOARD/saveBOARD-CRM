@@ -60,14 +60,36 @@ If any file shows an error, stop and send Claude the error text. Every file is s
 
 ## 4. Give crm_app a password
 
-1. In your password manager, create a new entry **"saveBOARD CRM: crm_app database"** with a generated password of **32 or more letters and digits only** (no symbols, so it can go in a connection string without escaping).
-2. In the SQL editor, run (replace the placeholder; this is the only place the password is typed):
-   ```sql
-   alter role crm_app login password 'PASTE-THE-PASSWORD-HERE';
-   ```
-3. Do not save that query as a snippet. Close the tab without saving.
+`crm_app` is a **database login** created by migration 1. It is not a Supabase dashboard user and does not appear under Authentication. It is the username the CRM app connects with. It cannot log in until it has a password.
 
-The app will connect through the pooler as user **`crm_app.<project-ref>`**, on port **6543** (transaction mode). The password goes straight into Vercel's environment variables when we set up the Vercel project. Never send it in chat or email.
+**Check it exists** (SQL editor):
+
+```sql
+select rolname, rolcanlogin from pg_roles where rolname = 'crm_app';
+```
+
+One row (`crm_app | false`) is right: it has no password yet. No rows means migration 1 did not run: stop and tell Claude.
+
+The password is only needed in two places: here and in Vercel. A password manager entry is optional. If the password is ever lost, generate a new one and repeat this step.
+
+1. **Generate it.** In PowerShell, paste this. It makes a random 40-character password (letters and digits) and copies it to the clipboard without showing it:
+   ```powershell
+   $c='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789'; $b=New-Object byte[] 40; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | % { $c[$_ % $c.Length] }) | Set-Clipboard
+   ```
+2. **Set it.** In the SQL editor type the line below, click between the two quote marks, press Ctrl+V, and Run. Expect "Success. No rows returned". Close the tab without saving.
+   ```sql
+   alter role crm_app login password '';
+   ```
+3. **Put it in Vercel now, while it is on the clipboard.** *saveboard-crm > Settings > Environment Variables*, add `CRM_DATABASE_URL` (Production and Preview):
+   ```
+   postgresql://crm_app.PROJECTREF:PASSWORD@HOST:6543/postgres
+   ```
+   - **PROJECTREF:** the ERP project's ID (the part of the Supabase dashboard address after `/project/`).
+   - **PASSWORD:** paste from the clipboard.
+   - **HOST:** Supabase **Connect** > **Transaction pooler**: the host shown, like `aws-0-ap-southeast-2.pooler.supabase.com`.
+4. **Clear the clipboard** by copying something else.
+
+Never send the password or the full connection string in chat or email.
 
 ## 5. Safety checks (SQL editor, read-only)
 
