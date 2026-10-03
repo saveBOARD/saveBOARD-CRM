@@ -71,7 +71,7 @@ The ERP repo (`saveboard-erp`) is a separate project. It is read-only reference:
 
 ## Context
 
-- Users: Paul Charteris (main, admin), Mark Atkinson, Iris; Dave Elder may be added later. Consultants have no logins. Their Excel visit logs are uploaded.
+- Users (profiles in migration 5, confirmed 4 Oct 2026): Paul Charteris (main, admin, paul@saveboard.nz), Mark Atkinson (mark@saveboard.com.au), Iris Lim (iris@saveboard.nz), Dave Elder (dave@saveboard.nz). Consultants have no logins. Their Excel visit logs are uploaded.
 - Scale is small: about 5,800 contacts, 4,000 companies, a few dozen deals, 2 to 3 users. Prefer simple over clever.
 - HubSpot has no workflows to replicate. Its notes were written by a Claude skill, which will be repointed at the CRM.
 - ERP overview: `docs/erp-reference/`. The ERP went live 30 Sep 2026 on Next.js, Vercel and Supabase.
