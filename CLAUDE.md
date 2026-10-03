@@ -63,6 +63,7 @@ The ERP repo (`saveboard-erp`) is a separate project. It is read-only reference:
 - **Plan before code** for anything larger than a small fix: write the plan, wait for approval.
 - Build in the order in the brief's *Build phases*. Email capture and the chase list come before the nice-to-haves.
 - Test migrations on a local database first (`supabase start`, or a scratch Postgres loaded with `docs/erp-reference/`). Run `scripts/verify_after_migration.sql`: every check must pass.
+- **Sign-in:** Microsoft 365 via Auth.js (`src/auth.ts`), single tenant, allowed only for active `crm.profiles` rows matched by email (Entra `oid` saved on first sign-in and enforced after). `src/proxy.ts` only does a quick cookie check; the real check is `requireUser()` / `requireAdmin()` from `src/server/auth/session.ts`, which re-reads the profile every request. Call one of them in every page, server action and route handler that shows or changes CRM data (the `(app)` layout already does). Without the four `AUTH_*` settings the app stays locked. Setup steps: `docs/runbooks/entra-app-registration.md`
 - Keep Claude's role explicit in code: it summarises, drafts and suggests; a person confirms. Log every Claude write with `actor_type = 'claude'`.
 - Store email **summaries**, subject, date and a link to the message, not full bodies, unless Paul decides otherwise (open item in the brief).
 - Capture only what is needed. Captured email and voice notes are personal information under the NZ Privacy Act 2020 and the Australian Privacy Act.

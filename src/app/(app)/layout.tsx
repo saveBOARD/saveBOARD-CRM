@@ -1,10 +1,13 @@
 import { TopBar } from "@/components/shell/top-bar";
+import { UserMenu } from "@/components/shell/user-menu";
+import { requireUser } from "@/server/auth/session";
 
-// Signed-in app shell. Sign-in (step 1.5) will guard this group and fill the user menu slot.
-export default function AppLayout({ children }: LayoutProps<"/">) {
+// Signed-in app shell. requireUser() is the real access check: a valid session AND an active CRM profile.
+export default async function AppLayout({ children }: LayoutProps<"/">) {
+  const user = await requireUser();
   return (
     <>
-      <TopBar />
+      <TopBar userSlot={<UserMenu user={user} />} />
       <main className="flex-1 px-4 py-4 sm:px-6">{children}</main>
     </>
   );
