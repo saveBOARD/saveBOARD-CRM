@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* saveBOARD design tokens: copied from the ERP (docs/erp-reference/Design.md §3, §11). Light theme only. */
+:root {
+  --nav: #0d2233; --nav-hover: #1b3a52; --nav-ink: #e8eef3;
+  --page: #f1f2f3; --surface: #ffffff; --ink: #1d2733; --muted: #5f6b77; --line: #d9dee3;
+  --primary: #0b4ea2; --primary-hover: #093f84; --link: #1557b0; --brand: #5fbf7f;
+  --ok: #2e8b4f; --bad: #d7341f; --bad-soft: #fde8e5; --pending: #e3e6e9; --warn: #b26b00;
+}
+
+@theme inline {
+  --color-nav: var(--nav); --color-nav-hover: var(--nav-hover); --color-nav-ink: var(--nav-ink);
+  --color-page: var(--page); --color-surface: var(--surface); --color-ink: var(--ink);
+  --color-muted: var(--muted); --color-line: var(--line); --color-primary: var(--primary);
+  --color-link: var(--link); --color-brand: var(--brand); --color-ok: var(--ok); --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft); --color-pending: var(--pending); --color-warn: var(--warn);
+  --font-sans: var(--font-roboto), "Segoe UI", Arial, sans-serif;
+}
+
+body { background: var(--page); color: var(--ink); font-family: var(--font-sans); }
+
+@layer components {
+  .input { @apply rounded border border-line bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20; }
+  .btn-primary { @apply inline-flex items-center gap-1.5 rounded bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-[var(--primary-hover)] focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60; }
+  .btn-secondary { @apply inline-flex items-center gap-1.5 rounded border border-line bg-surface px-3 py-1.5 text-sm text-ink shadow-sm hover:bg-page focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60; }
+  .icon-btn { @apply inline-flex h-8 w-8 items-center justify-center rounded text-primary hover:bg-page focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:text-muted disabled:opacity-50; }
+  .card { @apply rounded border border-line bg-surface; }
+  .eyebrow { @apply text-xs uppercase tracking-wide text-muted; }
+}

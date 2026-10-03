@@ -10,7 +10,12 @@ Read `docs/DESIGN.md` first. It is the design brief and the source of truth for 
 - Supabase Postgres, Sydney. **The same project as the ERP**, in its own `crm` schema
 - Microsoft 365 sign-in and the Microsoft Graph API (Outlook only; no Gmail)
 - Claude API for summaries and drafts
-- TODO: once the app is scaffolded, record the package manager, test runner and lint commands here
+- Next.js 16 (App Router, TypeScript), React 19, Tailwind v4, lucide-react, clsx, Zod. UI follows `docs/erp-reference/Design.md` (same tokens and patterns as the ERP), except dates: day/month/year (see below)
+- Package manager: **npm**. Node 22 or later
+- Commands: `npm run dev` (http://localhost:3000), `npm run lint`, `npm run typecheck`, `npm test` (Vitest), `npm run check` (all three; run before every commit), `npm run build`
+- Display formats live in `src/lib/format.ts`. Use them; don't format money or dates inline
+
+@AGENTS.md
 
 ## Hard rules (never break these)
 
