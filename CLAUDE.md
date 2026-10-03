@@ -50,6 +50,7 @@ The ERP repo (`saveboard-erp`) is a separate project. It is read-only reference:
 - Link CRM companies to ERP customers through `crm.company_erp_links` using the ERP customer `id` plus entity. Never match on name. A business trading in both countries has two links.
 - A quote is a sales order with `status = 'quote'` (`quote_status`: draft, sent, accepted, declined, expired). An order counts as invoiced when `invoiced_on` is set, not by status. A completed sale can appear in both `sales_history` and `sales_orders`: count it once (see the views).
 - ERP money: `unit_price` is ex GST, `discount_pct` and `tax_rate` are fractions (0.15 = 15%). Keep each amount in its own currency; never convert silently.
+- In code: reads use `db()` from `src/server/db/client.ts`; every write goes through `withActor(actor, tx => ...)` in `src/server/db/actor.ts`, which does the `set_config` below. ERP data is read only through `src/server/erp/`. `src/server/boundaries.test.ts` enforces the hard rules: keep it passing, never weaken it.
 - Before any write, set who is acting so the audit log is correct:
   `select set_config('crm.actor_type', 'user'|'claude'|'system', true), set_config('crm.actor_id', '<profile uuid>', true);`
 - Follow-up thresholds (7 days, quote expiry warning, first response, 2-month customer check-in) live in `crm.settings`. Change them there, never hard-code them.
