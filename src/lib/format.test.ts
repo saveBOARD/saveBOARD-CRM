@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysSince, formatDate, formatDateTime, formatMoney } from "./format";
+import { daysSince, formatDate, formatDateTime, formatMoney, toLocalDate } from "./format";
 
 describe("formatMoney", () => {
   it("shows two decimals, thousands separator and the currency after", () => {
@@ -40,5 +40,14 @@ describe("daysSince", () => {
     const now = new Date("2026-10-04T00:00:00Z");
     expect(daysSince("2026-09-26T12:00:00Z", now)).toBe(7);
     expect(daysSince(null, now)).toBeNull();
+  });
+});
+
+describe("toLocalDate", () => {
+  it("gives the NZ calendar day, which can differ from the UTC day", () => {
+    // 11:30 UTC on 30 Sep is 00:30 on 1 Oct in Auckland (NZDT, +13).
+    expect(toLocalDate("2026-09-30T11:30:00Z")).toBe("2026-10-01");
+    expect(toLocalDate(new Date("2026-09-30T11:30:00Z"), "AUS")).toBe("2026-09-30");
+    expect(toLocalDate(null)).toBeNull();
   });
 });

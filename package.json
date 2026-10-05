@@ -15,11 +15,14 @@
     "db:reset": "node scripts/local-db.mjs reset",
     "db:verify": "node scripts/local-db.mjs verify",
     "db:stop": "node scripts/local-db.mjs stop",
-    "test:db": "vitest run --project db"
+    "test:db": "vitest run --project db",
+    "db:load-hubspot": "node scripts/local-db.mjs load-hubspot"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.3",
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.51.0",
     "next": "16.3.8",
     "next-auth": "^5.0.0-beta.32",

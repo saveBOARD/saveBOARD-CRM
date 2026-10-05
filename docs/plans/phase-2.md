@@ -1,6 +1,6 @@
 # Phase 2 plan: migration and core screens
 
-Status: **draft for Paul's approval** (4 Oct 2026). Brief: `docs/DESIGN.md`, build phase 2.
+Status: **approved by Paul as recommended, 5 Oct 2026** (decisions 1-4 below: in-app admin import, everyone edits / admins delete and import, all contacts by recent activity with a My contacts filter, all 42 deals through review). Brief: `docs/DESIGN.md`, build phase 2.
 
 ## Goal
 

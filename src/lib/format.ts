@@ -50,3 +50,12 @@ export function daysSince(value: Date | string | null | undefined, now: Date = n
   if (Number.isNaN(d.getTime())) return null;
   return Math.floor((now.getTime() - d.getTime()) / 86_400_000);
 }
+
+/** The NZ (or AUS) calendar day of a timestamp as 'YYYY-MM-DD', for date columns and filters. */
+export function toLocalDate(value: Date | string | null | undefined, entity: Entity = "NZ"): string | null {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE[entity], year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}

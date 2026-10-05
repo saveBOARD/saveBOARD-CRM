@@ -5,6 +5,7 @@
 //   npm run db:start   start the local database (Docker Desktop must be running)
 //   npm run db:reset   rebuild: ERP schema + sample data, migrations twice (idempotency), verify checks
 //   npm run db:verify  run scripts/verify_after_migration.sql; exits 1 if any check fails
+//   npm run db:load-hubspot  load data/hubspot-crm-exports-all-contacts-*.csv (real data, local only)
 //   npm run db:stop    stop the local database
 //
 // Uses its own Supabase workdir (local-db/) where automatic migrations are off, because the ERP tables must
@@ -126,6 +127,30 @@ function reset() {
   verify();
 }
 
+/** Load the HubSpot contacts export from data/ (git-ignored) into the LOCAL database and run the loader. */
+function loadHubspot() {
+  const dir = join(ROOT, "data");
+  const file = existsSync(dir) && readdirSync(dir).filter((f) => /^hubspot-crm-exports-all-contacts.*\.csv$/i.test(f)).sort().pop();
+  if (!file) {
+    console.error("✗ No data/hubspot-crm-exports-all-contacts-*.csv found");
+    process.exit(1);
+  }
+  const csv = readFileSync(join(dir, file), "utf8").replace(/^﻿/, "");
+  // COPY ... FROM STDIN reads the rows that follow it in the same psql input stream, up to a line "\.".
+  const script = [
+    "truncate crm_staging.hubspot_contacts;",
+    "copy crm_staging.hubspot_contacts from stdin with (format csv, header true);",
+    csv.trimEnd(),
+    "\\.",
+    `select crm_staging.load_hubspot_contacts('${file.replace(/'/g, "''")}');`,
+    "truncate crm_staging.hubspot_contacts;",
+    "select crm.suggest_erp_matches();",
+  ].join("\n");
+  psql(script, `load ${file}`);
+  console.log(`  ✓ loaded ${file} and suggested ERP matches`);
+  process.stdout.write(psql("select measure, n from crm_staging.v_import_report order by measure;", "import report", ["-A", "-t", "-F", ": "]));
+}
+
 const command = process.argv[2];
 switch (command) {
   case "start":
@@ -140,7 +165,10 @@ switch (command) {
   case "verify":
     verify();
     break;
+  case "load-hubspot":
+    loadHubspot();
+    break;
   default:
-    console.log("Usage: node scripts/local-db.mjs <start|reset|verify|stop>");
+    console.log("Usage: node scripts/local-db.mjs <start|reset|verify|load-hubspot|stop>");
     process.exit(command ? 1 : 0);
 }

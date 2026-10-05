@@ -1,6 +1,7 @@
 import "server-only";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import type { SQL } from "drizzle-orm";
 import { serverEnv } from "@/server/env";
 
 // One connection pool per server instance, reused across hot reloads in dev.
@@ -20,8 +21,9 @@ function createSql() {
     connect_timeout: 10,
     ssl: local ? false : "require",
     connection: { application_name: "saveboard-crm" },
-    // Keep Postgres `date` values as 'YYYY-MM-DD' strings. Parsing them into JS Dates shifts them by the
-    // server's time zone; a date is a calendar day. `numeric` already comes back as a string (no float rounding).
+    // Keep Postgres `date` values as 'YYYY-MM-DD' strings (a date is a calendar day, never time-zone shifted).
+    // Drizzle also returns timestamptz as Postgres text ('2026-10-04 07:17:16.1+00'), which new Date() parses;
+    // `numeric` comes back as a string too (no float rounding).
     types: {
       date: { to: DATE_OID, from: [DATE_OID], serialize: (v: string) => v, parse: (v: string) => v },
     },
@@ -45,3 +47,8 @@ export function db() {
 
 export type Db = ReturnType<typeof db>;
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/** Run a read query and return its rows, typed by the caller. Pass `tx` to read inside a withActor transaction. */
+export async function rows<T>(query: SQL, tx?: Tx): Promise<T[]> {
+  return (await (tx ?? db()).execute(query)) as unknown as T[];
+}
