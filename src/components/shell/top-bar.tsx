@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { Suspense } from "react";
 import { Building2, ListChecks, SquareKanban, Upload, Users, type LucideIcon } from "lucide-react";
+import { SearchBox } from "./search-box";
 
 type Section = { href: string; label: string; icon: LucideIcon };
 
@@ -52,7 +54,13 @@ export function TopBar({ userSlot }: { userSlot?: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">{userSlot}</div>
+        <div className="ml-auto flex items-center gap-3">
+          {/* useSearchParams needs a Suspense boundary */}
+          <Suspense fallback={null}>
+            <SearchBox />
+          </Suspense>
+          {userSlot}
+        </div>
       </div>
     </header>
   );
