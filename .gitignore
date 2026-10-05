@@ -35,3 +35,6 @@ desktop.ini
 !.vscode/extensions.json
 .idea/
 *.log
+
+# Office lock files
+~$*
