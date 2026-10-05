@@ -1,6 +1,6 @@
 -- =============================================================================
 -- saveBOARD CRM  |  Post-migration safety checks (READ-ONLY: changes nothing)
--- Run in the Supabase SQL editor after migrations 1-3. Every row must show passed = true.
+-- Run in the Supabase SQL editor after migrations 1-5. Every row (9) must show passed = true.
 -- Do NOT put this file in supabase/migrations/: it is a checklist, not a migration.
 -- =============================================================================
 with checks as (
@@ -70,6 +70,5 @@ with checks as (
 )
 select check_name, passed from checks order by passed, check_name;
 
--- Informational (not pass/fail): the schemas the Supabase Data API currently exposes.
-select coalesce(current_setting('pgrst.db_schemas', true), '(not visible here: check Settings > API > Exposed schemas)')
-       as data_api_exposed_schemas;
+-- Keep this the ONLY statement in the file: the Supabase SQL editor shows just the last result.
+-- The Data API exposed-schemas setting is also checked by hand in the dashboard (run sheet step 6).
