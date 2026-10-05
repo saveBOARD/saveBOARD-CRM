@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Pencil, UserPlus } from "lucide-react";
+import { DeleteButton } from "@/components/forms/delete-button";
+import { NoteForm } from "@/components/forms/note-form";
 import { BackLink, Field, HeaderCard, Panel, Pill } from "@/components/ui/detail";
 import { SimpleTable } from "@/components/ui/simple-table";
 import { Timeline } from "@/components/ui/timeline";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { isUuid } from "@/lib/ids";
-import { countryName, SEGMENTS, STAGES } from "@/lib/labels";
+import { countryName, SEGMENTS, sourceLabel, STAGES } from "@/lib/labels";
 import { requireUser } from "@/server/auth/session";
 import { listActivities } from "@/server/crm/activities";
 import { getCompany } from "@/server/crm/companies";
@@ -20,7 +23,7 @@ export async function generateMetadata({ params }: PageProps<"/companies/[id]">)
 }
 
 export default async function CompanyPage({ params }: PageProps<"/companies/[id]">) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const company = await getCompany(id);
@@ -40,6 +43,26 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
           eyebrow="Company"
           title={company.name}
           subtitle={company.name !== company.raw_name ? "No name in HubSpot: showing the web domain" : undefined}
+          actions={
+            <>
+              <Link href={`/companies/${company.id}/edit`} className="btn-secondary">
+                <Pencil className="h-4 w-4" aria-hidden />
+                Edit
+              </Link>
+              <Link href={`/contacts/new?company=${company.id}`} className="btn-secondary">
+                <UserPlus className="h-4 w-4" aria-hidden />
+                Add contact
+              </Link>
+              {user.role === "admin" && (
+                <DeleteButton
+                  table="companies"
+                  id={company.id}
+                  name={company.name}
+                  consequence={`Its ${contacts.length} contact(s) stay in the CRM without a company.`}
+                />
+              )}
+            </>
+          }
         >
           <Field label="Segment">{SEGMENTS[company.segment]}</Field>
           <Field label="Country">{countryName(company.country_code)}</Field>
@@ -53,7 +76,7 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
             )}
           </Field>
           <Field label="City">{company.city}</Field>
-          <Field label="Source">{company.source === "hubspot" ? "HubSpot" : company.source}</Field>
+          <Field label="Source">{sourceLabel(company.source)}</Field>
           <Field label="Snoozed">
             {company.snoozed_until && `Until ${formatDate(company.snoozed_until)}${company.snooze_reason ? `: ${company.snooze_reason}` : ""}`}
           </Field>
@@ -107,6 +130,7 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
       </Panel>
 
       <Panel title="Activity">
+        <NoteForm target={{ companyId: company.id }} />
         <Timeline items={activities} empty="No activity yet. Emails, calls and notes will appear here." />
       </Panel>
     </div>

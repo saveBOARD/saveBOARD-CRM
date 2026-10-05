@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { DataTable } from "@/components/data-table/data-table";
 import type { TableColumn } from "@/components/data-table/types";
@@ -39,7 +41,15 @@ export default async function CompaniesPage() {
 
   return (
     <>
-      <PageHeader title="Companies" />
+      <PageHeader
+        title="Companies"
+        actions={
+          <Link href="/companies/new" className="btn-primary">
+            <Plus className="h-4 w-4" aria-hidden />
+            New company
+          </Link>
+        }
+      />
       <DataTable
         id="companies"
         noun="companies"

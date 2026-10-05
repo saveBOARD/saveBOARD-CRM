@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Pencil } from "lucide-react";
+import { DeleteButton } from "@/components/forms/delete-button";
+import { NoteForm } from "@/components/forms/note-form";
 import { BackLink, Field, HeaderCard, Panel, Pill } from "@/components/ui/detail";
 import { SimpleTable } from "@/components/ui/simple-table";
 import { Timeline } from "@/components/ui/timeline";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { isUuid } from "@/lib/ids";
-import { CONSENT, countryName, SEGMENTS, STAGES } from "@/lib/labels";
+import { CONSENT, countryName, SEGMENTS, sourceLabel, STAGES } from "@/lib/labels";
 import { requireUser } from "@/server/auth/session";
 import { listActivities } from "@/server/crm/activities";
 import { getContact } from "@/server/crm/contacts";
@@ -19,7 +22,7 @@ export async function generateMetadata({ params }: PageProps<"/contacts/[id]">):
 }
 
 export default async function ContactPage({ params }: PageProps<"/contacts/[id]">) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const contact = await getContact(id);
@@ -43,6 +46,22 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
             ) : (
               "No company"
             )
+          }
+          actions={
+            <>
+              <Link href={`/contacts/${contact.id}/edit`} className="btn-secondary">
+                <Pencil className="h-4 w-4" aria-hidden />
+                Edit
+              </Link>
+              {user.role === "admin" && (
+                <DeleteButton
+                  table="contacts"
+                  id={contact.id}
+                  name={contact.name ?? contact.email ?? ""}
+                  consequence="Their notes and activity stay on the company timeline."
+                />
+              )}
+            </>
           }
           pills={
             <>
@@ -74,7 +93,7 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
           <Field label="City">{contact.city}</Field>
           <Field label="Samples sent">{contact.samples_sent ? "Yes" : "No"}</Field>
           <Field label="Last activity">{formatDateTime(contact.last_activity_at)}</Field>
-          <Field label="Source">{contact.source === "hubspot" ? "HubSpot" : contact.source}</Field>
+          <Field label="Source">{sourceLabel(contact.source)}</Field>
           <Field label="Consent source">
             {contact.consent_source}
             {contact.consent_at && ` (${formatDateTime(contact.consent_at)})`}
@@ -108,6 +127,7 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
       </Panel>
 
       <Panel title="Activity">
+        <NoteForm target={{ contactId: contact.id, ...(contact.company_id ? { companyId: contact.company_id } : {}) }} />
         <Timeline items={activities} empty="No activity yet. Emails, calls and notes will appear here." />
       </Panel>
     </div>

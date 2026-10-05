@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import clsx from "clsx";
+import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { DataTable } from "@/components/data-table/data-table";
 import type { TableColumn } from "@/components/data-table/types";
@@ -65,7 +66,15 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
 
   return (
     <>
-      <PageHeader title="Contacts" />
+      <PageHeader
+        title="Contacts"
+        actions={
+          <Link href="/contacts/new" className="btn-primary">
+            <Plus className="h-4 w-4" aria-hidden />
+            New contact
+          </Link>
+        }
+      />
       <div className="mb-3 flex gap-2">
         <Tab href="/contacts" active={!mine}>
           All contacts
