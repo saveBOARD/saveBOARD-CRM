@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 ran on 6 Oct 2026.
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 ran on 6 Oct 2026. **7 still to run.**
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
@@ -15,6 +15,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 4 | `20261003000400_hubspot_staging_and_load.sql` | Staging tables, country/city/owner maps, the contacts and companies loader | No |
 | 5 | `20261003000500_seed_profiles.sql` | CRM users (Paul, Mark Atkinson, Iris Lim, Dave Elder) | No |
 | 6 | `20261005000100_suggest_matches_definer.sql` | Lets the app run the ERP match suggester (pg_trgm lives in `extensions`, which `crm_app` cannot use) | No |
+| 7 | `20261006000100_import_hubspot_contacts.sql` | In-app HubSpot contacts import: one function `crm_app` may run (no direct access to the staging tables) | No |
 | - | `../scripts/verify_after_migration.sql` | 9 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
