@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil, UserPlus } from "lucide-react";
+import { ErpPanel } from "@/components/erp/erp-panel";
 import { DeleteButton } from "@/components/forms/delete-button";
 import { NoteForm } from "@/components/forms/note-form";
 import { BackLink, Field, HeaderCard, Panel, Pill } from "@/components/ui/detail";
@@ -15,6 +16,7 @@ import { listActivities } from "@/server/crm/activities";
 import { getCompany } from "@/server/crm/companies";
 import { listContacts, type ContactListRow } from "@/server/crm/contacts";
 import { listDealsFor, type DealListRow } from "@/server/crm/deals";
+import { getCompanyErpAccounts, listErpDocuments } from "@/server/erp";
 
 export async function generateMetadata({ params }: PageProps<"/companies/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -29,11 +31,13 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
   const company = await getCompany(id);
   if (!company) notFound();
 
-  const [contacts, deals, activities] = await Promise.all([
+  const [contacts, deals, activities, erpAccounts] = await Promise.all([
     listContacts({ companyId: id }),
     listDealsFor({ companyId: id }),
     listActivities({ companyId: id }),
+    getCompanyErpAccounts(id),
   ]);
+  const erpDocuments = await listErpDocuments(erpAccounts.map((a) => a.erp_customer_id));
 
   return (
     <div className="mx-auto grid max-w-6xl gap-4">
@@ -87,6 +91,8 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
           )}
         </HeaderCard>
       </div>
+
+      <ErpPanel companyId={company.id} accounts={erpAccounts} documents={erpDocuments} isAdmin={user.role === "admin"} />
 
       <Panel title={`Contacts (${contacts.length})`}>
         <SimpleTable<ContactListRow>

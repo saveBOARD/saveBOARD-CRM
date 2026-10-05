@@ -28,7 +28,7 @@ export function TopBar({ userSlot }: { userSlot?: React.ReactNode }) {
     <header className="no-print bg-nav text-nav-ink">
       <div className="flex h-14 items-stretch gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 pr-2 focus:outline-none focus:ring-2 focus:ring-primary/20">
-          <Image src="/logo-on-dark.png" alt="saveBOARD" width={119} height={36} priority className="h-9 w-auto" />
+          <Image src="/logo-on-dark.png" alt="saveBOARD" width={119} height={36} priority style={{ height: 36, width: "auto" }} />
           <span className="text-sm text-nav-ink/70">CRM</span>
         </Link>
 

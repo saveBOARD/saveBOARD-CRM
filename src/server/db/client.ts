@@ -4,13 +4,12 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import type { SQL } from "drizzle-orm";
 import { serverEnv } from "@/server/env";
 
-// One connection pool per server instance, reused across hot reloads in dev.
+// One connection pool per server instance, reused across hot reloads in dev (and replaced if the URL changes).
 // Supabase's pooler (Supavisor, transaction mode) does not support prepared statements: prepare must stay false.
 
 const DATE_OID = 1082;
 
-function createSql() {
-  const url = serverEnv().databaseUrl;
+function createSql(url: string) {
   const host = new URL(url).hostname;
   const local = host === "localhost" || host === "127.0.0.1";
 
@@ -30,19 +29,21 @@ function createSql() {
   });
 }
 
-const globalForDb = globalThis as unknown as { crmSql?: postgres.Sql<{ date: string }> };
-
-function sqlClient() {
-  globalForDb.crmSql ??= createSql();
-  return globalForDb.crmSql;
+function createDb(url: string) {
+  return drizzle({ client: createSql(url) });
 }
 
-let database: ReturnType<typeof drizzle> | undefined;
+const globalForDb = globalThis as unknown as { crmDb?: { url: string; db: ReturnType<typeof createDb> } };
 
 /** The CRM database, connected as crm_app. For reads; every write goes through `withActor`. */
 export function db() {
-  database ??= drizzle({ client: sqlClient() });
-  return database;
+  const url = serverEnv().databaseUrl;
+  const current = globalForDb.crmDb;
+  if (!current || current.url !== url) {
+    void current?.db.$client.end({ timeout: 5 });
+    globalForDb.crmDb = { url, db: createDb(url) };
+  }
+  return globalForDb.crmDb!.db;
 }
 
 export type Db = ReturnType<typeof db>;

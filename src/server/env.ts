@@ -20,11 +20,11 @@ export const databaseUrlSchema = z
     }
   }, "CRM_DATABASE_URL must connect as crm_app (never postgres or the service role)");
 
-let cached: { databaseUrl: string } | undefined;
+let cached: { raw: string | undefined; databaseUrl: string } | undefined;
 
 export function serverEnv() {
-  if (!cached) {
-    cached = { databaseUrl: databaseUrlSchema.parse(process.env.CRM_DATABASE_URL) };
-  }
-  return cached;
+  // Re-check if the value changed (in dev, .env.local is reloaded after `npm run db:reset` sets a new password).
+  const raw = process.env.CRM_DATABASE_URL;
+  if (!cached || cached.raw !== raw) cached = { raw, databaseUrl: databaseUrlSchema.parse(raw) };
+  return { databaseUrl: cached.databaseUrl };
 }

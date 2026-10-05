@@ -1,4 +1,4 @@
-import { Activity, LogOut } from "lucide-react";
+import { Activity, Link2, LogOut } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "@/auth";
 import type { Profile } from "@/server/auth/profiles";
@@ -33,6 +33,12 @@ export function UserMenu({ user }: { user: Profile }) {
           <div className="font-medium">{user.displayName}</div>
           <div className="truncate text-xs text-muted">{user.email}</div>
         </div>
+        {user.role === "admin" && (
+          <Link href="/admin/matches" className="flex items-center gap-2 px-4 py-2 hover:bg-page">
+            <Link2 className="h-4 w-4" aria-hidden />
+            ERP matches
+          </Link>
+        )}
         {user.role === "admin" && (
           <Link href="/admin/health" className="flex items-center gap-2 px-4 py-2 hover:bg-page">
             <Activity className="h-4 w-4" aria-hidden />

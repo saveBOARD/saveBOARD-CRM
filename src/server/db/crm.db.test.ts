@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "./client";
 import { withActor } from "./actor";
 import { countErpCustomers } from "@/server/erp";
@@ -29,14 +29,19 @@ const ERP = {
 
 let paulId: string;
 
-beforeAll(async () => {
-  const [p] = await q<{ id: string }>(sql`select id from crm.profiles where display_name = 'Paul Charteris'`);
-  paulId = p.id;
+async function cleanup() {
   await withActor({ type: "system", reason: "import" }, async (tx) => {
     await tx.execute(sql`delete from crm.deals where title like 'TEST %'`);
     await tx.execute(sql`delete from crm.companies where name like 'TEST %'`);
   });
+}
+
+beforeAll(async () => {
+  const [p] = await q<{ id: string }>(sql`select id from crm.profiles where display_name = 'Paul Charteris'`);
+  paulId = p.id;
+  await cleanup();
 });
+afterAll(cleanup);
 
 describe("crm_app permissions", () => {
   it("connects as crm_app", async () => {
