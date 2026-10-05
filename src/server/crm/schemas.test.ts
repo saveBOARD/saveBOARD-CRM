@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { companySchema, contactSchema, fieldErrors, formObject, noteSchema } from "./schemas";
+import { companySchema, contactSchema, dealSchema, fieldErrors, formObject, moveSchema, noteSchema } from "./schemas";
 
 const baseCompany = { name: "Acme Builders", domain: "", website: "", segment: "builder", country_code: "nz", city: "", owner_id: "", notes: "" };
 const baseContact = {
@@ -61,5 +61,45 @@ describe("formObject", () => {
     f.set("first_name", "Jo");
     f.set("samples_sent", "on");
     expect(formObject(f, ["samples_sent", "track_followup"])).toEqual({ first_name: "Jo", samples_sent: true, track_followup: false });
+  });
+});
+
+describe("dealSchema", () => {
+  const base = {
+    title: "Hamilton depot cladding",
+    company_id: "3f2c1a9e-7b4d-4e8a-9c1f-2a6b5d8e0f13",
+    primary_contact_id: "",
+    entity: "NZ",
+    est_value: "",
+    source: "",
+    owner_id: "",
+    next_action: "",
+    next_action_on: "",
+    erp_so_number: "",
+  };
+  it("cleans the value and ERP number", () => {
+    expect(dealSchema.parse({ ...base, est_value: "$12,500.50", erp_so_number: "so-1594" })).toMatchObject({
+      est_value: "12500.50",
+      erp_so_number: "SO-1594",
+      source: null,
+    });
+  });
+  it("needs NZ or AUS, and a company or contact", () => {
+    const r = dealSchema.safeParse({ ...base, entity: "", company_id: "" });
+    expect(fieldErrors(r.error!)).toMatchObject({ entity: "Choose New Zealand or Australia" });
+    const r2 = dealSchema.safeParse({ ...base, company_id: "" });
+    expect(fieldErrors(r2.error!)).toEqual({ company_id: "Pick a company or a contact" });
+  });
+  it("refuses a bad amount or ERP number", () => {
+    const r = dealSchema.safeParse({ ...base, est_value: "about 5k", erp_so_number: "Q-12" });
+    expect(Object.keys(fieldErrors(r.error!)).sort()).toEqual(["erp_so_number", "est_value"]);
+  });
+});
+
+describe("moveSchema", () => {
+  it("needs a reason for Lost only", () => {
+    expect(moveSchema.safeParse({ stage: "won", lost_reason: "" }).success).toBe(true);
+    expect(fieldErrors(moveSchema.safeParse({ stage: "lost", lost_reason: " " }).error!)).toEqual({ lost_reason: "Say why the deal was lost" });
+    expect(moveSchema.safeParse({ stage: "archived", lost_reason: "" }).success).toBe(false);
   });
 });

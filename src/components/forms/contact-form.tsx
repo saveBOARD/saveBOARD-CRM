@@ -5,7 +5,7 @@ import { saveContact } from "@/app/(app)/actions";
 import { initialActionState } from "@/lib/action-state";
 import type { Contact } from "@/server/crm/contacts";
 import { ActionBar, Checkbox, FormCard, FormMessages, SelectField, TextArea, TextField } from "./fields";
-import { CompanyPicker } from "./company-picker";
+import { CompanyPicker } from "./lookup";
 import { countryOptions, ownerOptions, segmentOptions } from "./options";
 
 type Props = {
@@ -49,7 +49,7 @@ export function ContactForm({ contact, users, defaultOwnerId, company }: Props) 
       <FormCard title="Company and segment">
         <CompanyPicker
           defaultId={s ? String(s.company_id ?? "") || null : (contact?.company_id ?? company?.id)}
-          defaultName={s ? String(s.company_name ?? "") : (contact?.company ?? company?.name)}
+          defaultName={s ? String(s.company_id_label ?? "") : (contact?.company ?? company?.name)}
           error={e.company_id}
         />
         <SelectField name="segment" label="Segment" options={segmentOptions} defaultValue={v("segment", contact?.segment ?? "unknown")} error={e.segment} />

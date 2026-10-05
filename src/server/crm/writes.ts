@@ -128,3 +128,21 @@ export async function searchCompanies(q: string, limit = 20): Promise<{ id: stri
 export async function listUsers(): Promise<{ id: string; name: string }[]> {
   return rows(sql`select id, display_name as name from crm.profiles where active order by display_name`);
 }
+
+/** Contact look-up for forms: name or email contains the text; contacts at `companyId` first. */
+export async function searchContacts(q: string, companyId?: string | null, limit = 20) {
+  const term = q.trim();
+  if (term.length < 2) return [];
+  const like = `%${term.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
+  return rows<{ id: string; name: string; detail: string | null; company_id: string | null }>(sql`
+    select ct.id,
+           coalesce(nullif(trim(concat_ws(' ', ct.first_name, ct.last_name)), ''), ct.email) as name,
+           concat_ws(' · ', ct.email, ${companyDisplayName("co")}) as detail,
+           ct.company_id
+    from crm.contacts ct
+    left join crm.companies co on co.id = ct.company_id and co.deleted_at is null
+    where ct.deleted_at is null
+      and (concat_ws(' ', ct.first_name, ct.last_name) ilike ${like} or ct.email ilike ${like})
+    order by ${companyId ? sql`(ct.company_id = ${companyId}) desc nulls last,` : sql``} ct.last_activity_at desc nulls last
+    limit ${limit}`);
+}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, UserPlus } from "lucide-react";
+import { Pencil, Plus, UserPlus } from "lucide-react";
 import { ErpPanel } from "@/components/erp/erp-panel";
 import { DeleteButton } from "@/components/forms/delete-button";
 import { NoteForm } from "@/components/forms/note-form";
@@ -56,6 +56,10 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
               <Link href={`/contacts/new?company=${company.id}`} className="btn-secondary">
                 <UserPlus className="h-4 w-4" aria-hidden />
                 Add contact
+              </Link>
+              <Link href={`/deals/new?company=${company.id}`} className="btn-secondary">
+                <Plus className="h-4 w-4" aria-hidden />
+                New deal
               </Link>
               {user.role === "admin" && (
                 <DeleteButton

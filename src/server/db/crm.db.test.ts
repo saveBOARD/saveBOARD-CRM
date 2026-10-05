@@ -33,6 +33,8 @@ async function cleanup() {
   await withActor({ type: "system", reason: "import" }, async (tx) => {
     await tx.execute(sql`delete from crm.deals where title like 'TEST %'`);
     await tx.execute(sql`delete from crm.companies where name like 'TEST %'`);
+    // The sample Fulton Hogan ERP customers must be free for this test (local data only: they are made up).
+    await tx.execute(sql`delete from crm.company_erp_links where erp_customer_id in (${ERP.fultonNz}, ${ERP.fultonAus})`);
   });
 }
 

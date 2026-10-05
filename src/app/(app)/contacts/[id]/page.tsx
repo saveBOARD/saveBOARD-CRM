@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { DeleteButton } from "@/components/forms/delete-button";
 import { NoteForm } from "@/components/forms/note-form";
 import { BackLink, Field, HeaderCard, Panel, Pill } from "@/components/ui/detail";
@@ -52,6 +52,10 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
               <Link href={`/contacts/${contact.id}/edit`} className="btn-secondary">
                 <Pencil className="h-4 w-4" aria-hidden />
                 Edit
+              </Link>
+              <Link href={`/deals/new?contact=${contact.id}`} className="btn-secondary">
+                <Plus className="h-4 w-4" aria-hidden />
+                New deal
               </Link>
               {user.role === "admin" && (
                 <DeleteButton

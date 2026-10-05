@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed). **6 still to run** (see `docs/runbooks/live-database-setup.md`, "Later migrations").
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 ran on 6 Oct 2026.
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|

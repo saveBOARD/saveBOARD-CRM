@@ -50,7 +50,7 @@ export async function saveContact(_prev: ActionState, form: FormData): Promise<A
   if (id !== null && !isUuid(id)) return { message: "This contact no longer exists." };
 
   const values = formObject(form, ["samples_sent", "track_followup"]) as Record<string, string | boolean>;
-  values.company_name = String(form.get("company_name") ?? "");
+  values.company_id_label = String(form.get("company_id_label") ?? "");
   const parsed = contactSchema.safeParse(values);
   if (!parsed.success) return { ...CHECK_FAILED, fieldErrors: fieldErrors(parsed.error), values };
 

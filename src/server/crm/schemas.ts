@@ -92,3 +92,65 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+// --- Deals -----------------------------------------------------------------------------------------------------
+
+export const DEAL_SOURCES = {
+  website_form: "Website form",
+  enquiry_email: "Email enquiry",
+  phone: "Phone",
+  outreach: "saveBOARD outreach",
+  specifier: "Specifier / consultant visit",
+  referral: "Referral",
+  existing_customer: "Existing customer",
+  hubspot: "HubSpot",
+  other: "Other",
+} as const;
+
+const isoDate = z
+  .string()
+  .trim()
+  .transform((v) => (v === "" ? null : v))
+  .pipe(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date").nullable());
+
+export const dealSchema = z
+  .object({
+    title: z.string().trim().min(1, "Give the deal a short name, e.g. the project").max(200),
+    company_id: uuidOrNull,
+    primary_contact_id: uuidOrNull,
+    entity: z.enum(["NZ", "AUS"], { error: "Choose New Zealand or Australia" }),
+    est_value: z
+      .string()
+      .trim()
+      .transform((v) => (v === "" ? null : v.replace(/[,\s$]/g, "")))
+      .pipe(z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter an amount like 12500 or 12,500.00").nullable()),
+    source: z
+      .string()
+      .transform((v) => (v === "" ? null : v))
+      .pipe(z.enum(Object.keys(DEAL_SOURCES) as [keyof typeof DEAL_SOURCES, ...(keyof typeof DEAL_SOURCES)[]]).nullable()),
+    owner_id: uuidOrNull,
+    next_action: text(300),
+    next_action_on: isoDate,
+    erp_so_number: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .transform((v) => (v === "" ? null : v))
+      .pipe(z.string().regex(/^SO-\d+$/, "ERP numbers look like SO-1594").nullable()),
+  })
+  .refine((d) => d.company_id || d.primary_contact_id, { message: "Pick a company or a contact", path: ["company_id"] });
+export type DealInput = z.output<typeof dealSchema>;
+
+const STAGE_KEYS = ["new_enquiry", "contacted", "qualified", "quote_sent", "negotiation", "won", "lost"] as const;
+
+export const moveSchema = z
+  .object({
+    stage: z.enum(STAGE_KEYS),
+    lost_reason: text(300),
+  })
+  .refine((m) => m.stage !== "lost" || m.lost_reason, { message: "Say why the deal was lost", path: ["lost_reason"] });
+
+export const snoozeSchema = z.object({
+  snoozed_until: isoDate.pipe(z.string().nullable()),
+  snooze_reason: text(200),
+});
