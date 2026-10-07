@@ -1,6 +1,6 @@
 -- =============================================================================
 -- saveBOARD CRM  |  Post-migration safety checks (READ-ONLY: changes nothing)
--- Run in the Supabase SQL editor after migrations 1-5. Every row (11) must show passed = true.
+-- Run in the Supabase SQL editor after migrations 1-5. Every row (12) must show passed = true.
 -- Do NOT put this file in supabase/migrations/: it is a checklist, not a migration.
 -- =============================================================================
 with checks as (
@@ -46,6 +46,17 @@ with checks as (
                      where n.nspname = 'crm_staging' and p.proname = 'import_hubspot_contacts'
                        and has_function_privilege('crm_app', p.oid, 'execute'))
          and not has_table_privilege('crm_app', 'crm_staging.hubspot_contacts', 'select,insert,update,delete')
+
+  union all
+  select 'crm_app can run the notes and consent imports; new contacts are checked against the do-not-email list (migration 8)',
+         to_regclass('crm.email_suppressions') is not null
+         and exists (select 1 from pg_trigger where tgname = 'trg_apply_email_suppression' and not tgisinternal)
+         and exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                     where n.nspname = 'crm_staging' and p.proname = 'import_hubspot_notes' and p.prosecdef
+                       and has_function_privilege('crm_app', p.oid, 'execute'))
+         and exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                     where n.nspname = 'crm_staging' and p.proname = 'import_hubspot_email_events' and p.prosecdef
+                       and has_function_privilege('crm_app', p.oid, 'execute'))
 
   union all
   select 'the ERP match suggester runs with owner rights (migration 6)',

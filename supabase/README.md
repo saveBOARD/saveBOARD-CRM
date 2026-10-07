@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026 (11 checks pass).
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026 (11 checks pass). **8 still to run.**
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
@@ -16,7 +16,8 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 5 | `20261003000500_seed_profiles.sql` | CRM users (Paul, Mark Atkinson, Iris Lim, Dave Elder) | No |
 | 6 | `20261005000100_suggest_matches_definer.sql` | Lets the app run the ERP match suggester (pg_trgm lives in `extensions`, which `crm_app` cannot use) | No |
 | 7 | `20261006000100_import_hubspot_contacts.sql` | In-app HubSpot contacts import: one function `crm_app` may run (no direct access to the staging tables) | No |
-| - | `../scripts/verify_after_migration.sql` | 11 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
+| 8 | `20261007000100_hubspot_notes_and_consent.sql` | HubSpot notes import, email consent from campaign results, do-not-email list (`crm.email_suppressions`) applied to new contacts | No |
+| - | `../scripts/verify_after_migration.sql` | 12 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
 

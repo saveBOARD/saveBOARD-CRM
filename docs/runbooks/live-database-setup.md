@@ -93,7 +93,7 @@ Never send the password or the full connection string in chat or email.
 
 ## 5. Safety checks (SQL editor, read-only)
 
-Paste and run `scripts/verify_after_migration.sql`. **Every row (11) must show `passed = true`.**
+Paste and run `scripts/verify_after_migration.sql`. **Every row (12) must show `passed = true`.**
 
 Then, in a **new tab**, run this, which compares the CRM's view of customers with the ERP's own count (the SQL editor only shows the last result in a tab):
 
@@ -124,6 +124,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 |---|---|---|---|
 | 6 | `supabase/migrations/20261005000100_suggest_matches_definer.sql` | Done 7 Oct 2026 | Lets the CRM's "Suggest matches" button work. Changes no ERP table. |
 | 7 | `supabase/migrations/20261006000100_import_hubspot_contacts.sql` | Done 7 Oct 2026 | The in-app HubSpot contacts import (Imports screen). Changes no ERP table. |
+| 8 | `supabase/migrations/20261007000100_hubspot_notes_and_consent.sql` | **To run** | HubSpot notes and email consent imports, and the do-not-email list. Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
