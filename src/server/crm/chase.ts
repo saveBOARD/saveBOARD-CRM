@@ -26,6 +26,7 @@ export type ChaseItem = {
   stage: string | null;
   last_activity_at: string | null;
   created_by_claude: boolean;
+  draft_text: string | null;
 };
 
 /** Where each kind of item sits on the page, most urgent first. Claude's follow-ups and suggestions slot in. */
@@ -50,7 +51,7 @@ export async function listChase(opts: { assignedTo?: string } = {}): Promise<Cha
            nullif(trim(concat_ws(' ', ct.first_name, ct.last_name)), '') as contact,
            co.name as company, d.entity, d.stage::text as stage,
            coalesce(d.last_activity_at, ct.last_activity_at, co.last_activity_at) as last_activity_at,
-           t.created_by_claude
+           t.created_by_claude, t.draft_text
     from crm.tasks t
     left join crm.deals d on d.id = t.deal_id
     left join crm.contacts ct on ct.id = coalesce(t.contact_id, d.primary_contact_id)

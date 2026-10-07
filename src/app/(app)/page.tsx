@@ -7,9 +7,12 @@ import { daysSince } from "@/lib/format";
 import { STAGES, type Stage } from "@/lib/labels";
 import { requireUser } from "@/server/auth/session";
 import { countUpcoming, DISMISSABLE, listChase, type ChaseItem } from "@/server/crm/chase";
+import { parseDraft } from "@/server/crm/drafts";
 import { chaseSettings } from "@/server/crm/settings";
 
 export const metadata: Metadata = { title: "Today" };
+// Drafting with Claude (Draft button) can take up to about 45 seconds.
+export const maxDuration = 60;
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
@@ -104,6 +107,10 @@ export default async function TodayPage({ searchParams }: PageProps<"/">) {
                   suggestion={i.rule === "suggest_negotiation"}
                   dismissable={DISMISSABLE.has(i.rule) && i.rule !== "suggest_negotiation"}
                   byClaude={i.created_by_claude}
+                  draft={(() => {
+                    const d = parseDraft(i.draft_text);
+                    return d ? { subject: d.subject, body: d.body, to: d.to, link: d.outlook_link ?? null } : null;
+                  })()}
                 />
               ))}
             </ul>

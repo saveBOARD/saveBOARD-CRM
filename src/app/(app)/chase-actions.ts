@@ -6,6 +6,7 @@ import type { ActionState } from "@/lib/action-state";
 import { toLocalDate } from "@/lib/format";
 import { requireUser } from "@/server/auth/session";
 import { acceptSuggestion, completeChase, dismissChase, snoozeChase } from "@/server/crm/chase";
+import { draftChase, saveChaseDraft } from "@/server/crm/drafts";
 
 // Chase list actions (Today page). Each one: check the user, validate, write via withActor (in server/crm/chase.ts).
 
@@ -60,4 +61,53 @@ export async function dismissChaseItem(form: FormData): Promise<void> {
   const taskId = id.safeParse(form.get("task_id"));
   if (taskId.success) await dismissChase({ type: "user", profileId: user.id }, taskId.data);
   refresh();
+}
+
+export type DraftState = {
+  ok?: boolean;
+  message?: string;
+  warning?: string | null;
+  subject?: string;
+  body?: string;
+  to?: string;
+  link?: string;
+  savedAt?: number;
+};
+
+/** Claude drafts (or re-drafts) the follow-up for a chase item. Takes a few seconds; nothing leaves the CRM. */
+export async function draftChaseEmail(_prev: DraftState, form: FormData): Promise<DraftState> {
+  const user = await requireUser();
+  const taskId = id.safeParse(form.get("task_id"));
+  if (!taskId.success) return { ok: false, message: "This item no longer exists." };
+  try {
+    const r = await draftChase({ id: user.id, displayName: user.displayName, email: user.email }, taskId.data);
+    if (!r.ok) return { ok: false, message: r.message };
+    return { ok: true, subject: r.draft.subject, body: r.draft.body, to: r.draft.to, warning: r.warning, savedAt: Date.now() };
+  } catch {
+    return { ok: false, message: "Claude couldn't draft this just now. Please try again in a minute." };
+  }
+}
+
+const saveSchema = z.object({ task_id: z.uuid(), subject: z.string().trim().min(1).max(200), body: z.string().trim().min(1).max(5000) });
+
+/** Save the reviewed draft to the user's own Outlook Drafts folder. The CRM never sends it. */
+export async function saveDraftToOutlook(_prev: DraftState, form: FormData): Promise<DraftState> {
+  const user = await requireUser();
+  const parsed = saveSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { ok: false, message: "The draft needs a subject and some text." };
+  const { task_id, subject, body } = parsed.data;
+  try {
+    const r = await saveChaseDraft({ type: "user", profileId: user.id }, task_id, { subject, body });
+    if (!r.ok) return { ok: false, message: r.message, subject, body };
+    refresh();
+    return { ok: true, message: "Saved to your Outlook Drafts.", link: r.link, subject, body, savedAt: Date.now() };
+  } catch (e) {
+    const notConnected = e instanceof Error && /not connected|refresh access/i.test(e.message);
+    return {
+      ok: false,
+      subject,
+      body,
+      message: notConnected ? "Your Outlook isn't connected: connect it under Outlook connection, then try again." : "Outlook didn't save the draft. Please try again.",
+    };
+  }
 }

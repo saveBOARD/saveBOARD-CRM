@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, Mail } from "lucide-react";
 import { acceptChaseSuggestion, dismissChaseItem, markChaseDone, snoozeChaseItem } from "@/app/(app)/chase-actions";
 import { initialActionState } from "@/lib/action-state";
+import { DraftPanel, type ExistingDraft } from "./draft-panel";
 
 export type ChaseRowProps = {
   id: string;
@@ -17,10 +18,11 @@ export type ChaseRowProps = {
   suggestion: boolean;
   dismissable: boolean;
   byClaude: boolean;
+  draft: ExistingDraft | null;
 };
 
 export function ChaseRow(p: ChaseRowProps) {
-  const [open, setOpen] = useState<"done" | "snooze" | null>(null);
+  const [open, setOpen] = useState<"done" | "snooze" | "draft" | null>(p.draft ? "draft" : null);
   const [days, setDays] = useState("7");
   const [doneState, doneAction, donePending] = useActionState(markChaseDone, initialActionState);
   const [snoozeState, snoozeAction, snoozePending] = useActionState(snoozeChaseItem, initialActionState);
@@ -67,6 +69,10 @@ export function ChaseRow(p: ChaseRowProps) {
                 <Check className="h-4 w-4" aria-hidden />
                 Done
               </button>
+              <button type="button" className="btn-secondary" aria-expanded={open === "draft"} onClick={() => setOpen(open === "draft" ? null : "draft")}>
+                <Mail className="h-4 w-4" aria-hidden />
+                Draft
+              </button>
               <button type="button" className="btn-secondary" aria-expanded={open === "snooze"} onClick={() => setOpen(open === "snooze" ? null : "snooze")}>
                 <Clock className="h-4 w-4" aria-hidden />
                 Snooze
@@ -98,6 +104,8 @@ export function ChaseRow(p: ChaseRowProps) {
           </div>
         </form>
       )}
+
+      {open === "draft" && <DraftPanel taskId={p.id} existing={p.draft} />}
 
       {open === "snooze" && (
         <form action={snoozeAction} className="mt-3 grid gap-2 border-t border-line pt-3 sm:grid-cols-[auto_auto_1fr_auto] sm:items-end">

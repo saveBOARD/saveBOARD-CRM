@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { rows } from "@/server/db/client";
+import { withActor, type Actor } from "@/server/db/actor";
 
 // Follow-up thresholds live in crm.settings (CLAUDE.md: change them there, never hard-code them).
 export type IntSetting =
@@ -23,4 +24,19 @@ export async function chaseSettings() {
     select crm.setting_int('stale_days') as stale, crm.setting_int('quote_expiry_warning_days') as qexp,
            coalesce(crm.setting_int('first_response_business_days'), 1) as frd, crm.setting_int('customer_checkin_days') as cci`);
   return r;
+}
+
+/** Emails Paul has written and liked, pasted by an admin: Claude matches their voice in chase drafts (phase 3.6). */
+export async function getVoiceExamples(): Promise<string> {
+  const [r] = await rows<{ value: string }>(sql`select value from crm.settings where key = 'chase_voice_examples'`);
+  return r?.value ?? "";
+}
+
+export async function saveVoiceExamples(actor: Actor & { type: "user" }, text: string): Promise<void> {
+  await withActor(actor, (tx) =>
+    tx.execute(sql`
+      insert into crm.settings (key, value, note)
+      values ('chase_voice_examples', ${text}, 'Example emails for the voice of chase drafts (admin, Claude drafts page)')
+      on conflict (key) do update set value = excluded.value, updated_at = now()`),
+  );
 }

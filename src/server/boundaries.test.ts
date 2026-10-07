@@ -39,6 +39,10 @@ describe("hard rules", () => {
     expect(offenders((f) => /Mail\.Send/.test(f.text))).toEqual([]);
   });
 
+  it("never calls Outlook's send endpoints: chase emails are saved as drafts only", () => {
+    expect(offenders((f) => /\/(send|reply|replyAll|forward)\b|sendMail/i.test(f.text) && /graph/i.test(f.text))).toEqual([]);
+  });
+
   it("reads mail headers only: the Outlook sync never asks Microsoft for email bodies", () => {
     const sync = files.filter((f) => f.path.startsWith("server/mail/") && /MESSAGE_FIELDS\s*=/.test(f.text));
     expect(sync.length).toBe(1);

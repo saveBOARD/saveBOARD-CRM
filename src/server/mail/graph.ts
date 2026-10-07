@@ -126,3 +126,39 @@ export async function testMailConnection(profileId: string, fetchImpl: typeof fe
   );
   return { ...inbox, shared };
 }
+
+export type OutlookDraft = { subject: string; body: string; to: { address: string; name: string | null } };
+
+/**
+ * Save a draft email in this user's own Outlook Drafts folder: create it, or update the one saved before (if it's
+ * still a draft there). These are the CRM's only writes to Outlook. There is no call that sends, and the app has no
+ * permission to send.
+ */
+export async function createOutlookDraft(
+  profileId: string,
+  d: OutlookDraft,
+  fetchImpl: typeof fetch = fetch,
+  existingId?: string | null,
+): Promise<{ id: string; webLink: string }> {
+  const token = await graphToken(profileId, fetchImpl);
+  const res = await fetchImpl(existingId ? `${GRAPH}/me/messages/${encodeURIComponent(existingId)}` : `${GRAPH}/me/messages`, {
+    method: existingId ? "PATCH" : "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subject: d.subject,
+      body: { contentType: "Text", content: d.body },
+      toRecipients: [{ emailAddress: { address: d.to.address, ...(d.to.name ? { name: d.to.name } : {}) } }],
+    }),
+    cache: "no-store",
+  });
+  // The earlier draft was sent or deleted in Outlook (or is no longer a draft): make a new one.
+  if (existingId && (res.status === 404 || res.status === 400 || res.status === 403)) return createOutlookDraft(profileId, d, fetchImpl);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: { code?: string } };
+    const code = body.error?.code ?? String(res.status);
+    throw new GraphError(res.status, code, `Outlook didn't save the draft (${code})`);
+  }
+  const m = (await res.json()) as { id: string; webLink: string; isDraft?: boolean };
+  if (existingId && m.isDraft === false) return createOutlookDraft(profileId, d, fetchImpl);
+  return { id: m.id, webLink: m.webLink };
+}
