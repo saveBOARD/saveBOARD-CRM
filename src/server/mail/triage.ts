@@ -23,38 +23,52 @@ export type TriageSender = {
 };
 
 export async function listTriage(limit = 200): Promise<TriageSender[]> {
-  return rows<TriageSender>(sql`
-    with pending as (
-      select u.*, split_part(u.from_address, '@', 2) as domain
-      from crm.unmatched_emails u
-      where u.status = 'pending'
-    ), senders as (
-      select from_address, domain,
-             (array_agg(from_name order by received_at desc) filter (where from_name is not null))[1] as from_name,
-             count(*)::int as emails,
-             max(received_at) as latest_at,
-             (array_agg(subject order by received_at desc))[1] as latest_subject,
-             (array_agg(external_url order by received_at desc))[1] as latest_url,
-             array_agg(distinct mailbox) filter (where mailbox is not null) as mailboxes
-      from pending group by from_address, domain
-    )
-    select s.from_address, s.from_name, s.emails, s.latest_at, s.latest_subject, s.latest_url,
-           coalesce(s.mailboxes, '{}') as mailboxes,
-           exists (select 1 from crm.free_email_domains f where f.domain = s.domain) as free_domain,
-           co.id as company_id, co.name as company_name
-    from senders s
-    left join lateral (
-      select c.id, c.name from crm.companies c
-      where c.deleted_at is null
-        and not exists (select 1 from crm.free_email_domains f where f.domain = s.domain)
-        and (lower(c.domain) = s.domain
-             or c.id in (select ct.company_id from crm.contacts ct
-                         where ct.deleted_at is null and split_part(lower(ct.email), '@', 2) = s.domain))
-      order by (lower(c.domain) = s.domain) desc, c.last_activity_at desc nulls last
-      limit 1
-    ) co on true
-    order by s.latest_at desc
+  // Three small, separate queries. One combined query let the planner compare every sender with every contact and
+  // company: at live volumes it ran for minutes, held the database connections and timed out the whole CRM.
+  const senders = await rows<Omit<TriageSender, "free_domain" | "company_id" | "company_name">>(sql`
+    select from_address,
+           (array_agg(from_name order by received_at desc) filter (where from_name is not null))[1] as from_name,
+           count(*)::int as emails,
+           max(received_at) as latest_at,
+           (array_agg(subject order by received_at desc))[1] as latest_subject,
+           (array_agg(external_url order by received_at desc))[1] as latest_url,
+           coalesce(array_agg(distinct mailbox) filter (where mailbox is not null), '{}') as mailboxes
+    from crm.unmatched_emails
+    where status = 'pending'
+    group by from_address
+    order by max(received_at) desc
     limit ${limit}`);
+  if (senders.length === 0) return [];
+
+  const domains = [...new Set(senders.map((s) => domainOf(s.from_address)))];
+  const list = sql`(${sql.join(
+    domains.map((d) => sql`${d}`),
+    sql`, `,
+  )})`;
+  const [free, byCompany, byContact] = await Promise.all([
+    rows<{ domain: string }>(sql`select domain from crm.free_email_domains where domain in ${list}`),
+    rows<{ domain: string; id: string; name: string }>(sql`
+      select lower(domain) as domain, id, name from crm.companies
+      where deleted_at is null and lower(domain) in ${list}
+      order by last_activity_at desc nulls last`),
+    rows<{ domain: string; id: string; name: string }>(sql`
+      select x.domain, c.id, c.name
+      from (select split_part(lower(email), '@', 2) as domain, company_id from crm.contacts
+            where deleted_at is null and company_id is not null) x
+      join crm.companies c on c.id = x.company_id and c.deleted_at is null
+      where x.domain in ${list}
+      order by c.last_activity_at desc nulls last`),
+  ]);
+
+  const freeSet = new Set(free.map((f) => f.domain));
+  const suggestion = new Map<string, { id: string; name: string }>();
+  for (const c of [...byCompany, ...byContact]) if (!freeSet.has(c.domain) && !suggestion.has(c.domain)) suggestion.set(c.domain, c);
+
+  return senders.map((s) => {
+    const d = domainOf(s.from_address);
+    const co = suggestion.get(d);
+    return { ...s, free_domain: freeSet.has(d), company_id: co?.id ?? null, company_name: co?.name ?? null };
+  });
 }
 
 export async function countTriage(): Promise<number> {

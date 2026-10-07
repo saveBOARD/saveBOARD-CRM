@@ -76,6 +76,11 @@ with checks as (
          and exists (select 1 from crm.settings where key = 'mail_backfill_days')
 
   union all
+  select 'crm_app queries are cancelled after 30 seconds (migration 11)',
+         exists (select 1 from pg_db_role_setting s join pg_roles r on r.oid = s.setrole
+                 where r.rolname = 'crm_app' and 'statement_timeout=30s' = any (s.setconfig))
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

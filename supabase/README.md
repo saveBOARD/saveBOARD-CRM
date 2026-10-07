@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass).
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass). **11 still to run.**
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
@@ -19,7 +19,8 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 8 | `20261007000100_hubspot_notes_and_consent.sql` | HubSpot notes import, email consent from campaign results, do-not-email list (`crm.email_suppressions`) applied to new contacts | No |
 | 9 | `20261008000100_mail_accounts.sql` | Outlook connections: one row per user, the Microsoft refresh token stored encrypted (key in the `MAIL_TOKEN_KEY` app setting, never in the database) | No |
 | 10 | `20261008000200_mail_sync.sql` | Outlook mail sync: ignore list (`crm.mail_ignore`), sync progress columns, triage columns, `mail_backfill_days` setting (90) | No |
-| - | `../scripts/verify_after_migration.sql` | 14 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
+| 11 | `20261008000300_crm_app_statement_timeout.sql` | Safety net: any crm_app query is cancelled after 30 seconds | Role setting on `crm_app` only |
+| - | `../scripts/verify_after_migration.sql` | 15 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
 
