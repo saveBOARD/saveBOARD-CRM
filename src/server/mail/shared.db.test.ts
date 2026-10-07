@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { rows } from "@/server/db/client";
 import { withActor } from "@/server/db/actor";
-import type { EnquiryExtractor, ExtractedEnquiry } from "@/server/claude/enquiry";
+import type { EnquiryExtractor, ExtractedEnquiry, OrderExtractor } from "@/server/claude/enquiry";
 import { saveMailAccount } from "./accounts";
 import type { GraphMessage } from "./classify";
 import { processWebEnquiries } from "./enquiries";
@@ -129,6 +129,20 @@ const FORMS: Record<string, ExtractedEnquiry> = {
   "<enqtest-f4@x>": form({ is_enquiry: false, summary: "Spam" }),
 };
 const extract: EnquiryExtractor = async ({ text }) => FORMS[/<enqtest-[^>]+>/.exec(text)![0]];
+const extractOrder: OrderExtractor = async () => ({
+  is_order: true,
+  order_number: "1042",
+  first_name: "Sam",
+  last_name: "Buyer",
+  email: "sam@shop.enqtest.test",
+  phone: "021 444 5555",
+  company: null,
+  country: "NZ",
+  city: "Christchurch",
+  items: [{ name: "Sample pack", quantity: 2 }],
+  is_sample_order: true,
+  summary: "Ordered 2 sample packs for delivery to Christchurch.",
+});
 
 describe("shared mailboxes and website forms", () => {
   it("reads the Inbox and the folders under it, queues forms and orders, logs the rest", async () => {
@@ -169,7 +183,7 @@ describe("shared mailboxes and website forms", () => {
       { kind: "form", entity: "AUS", status: "pending", mailbox: SALES, message_id: "s2" },
       { kind: "form", entity: "NZ", status: "pending", mailbox: ENQ, message_id: "n1" },
       { kind: "form", entity: "AUS", status: "pending", mailbox: SALES, message_id: "s9" },
-      { kind: "shop_order", entity: "AUS", status: "held", mailbox: SALES, message_id: "s3" },
+      { kind: "shop_order", entity: "AUS", status: "pending", mailbox: SALES, message_id: "s3" },
     ]);
     // Ordinary mail: known contact logged (marked with the shared mailbox); unknown sender to triage.
     const [logged] = await rows<{ mailbox: string; folder: string }>(
@@ -190,11 +204,11 @@ describe("shared mailboxes and website forms", () => {
 
   it("turns forms into contacts and New enquiry deals with alternating owners, consent and entity", async () => {
     const g = fakeOutlook({ [SALES]: [{ id: "x", name: "Inbox" }], [ENQ]: [{ id: "y", name: "Inbox" }] }, {
-      x: [m("s1-moved", "f1", {}), m("s2", "f2", {}), m("s9", "f4", {})],
+      x: [m("s1-moved", "f1", {}), m("s2", "f2", {}), m("s9", "f4", {}), m("s3", "o1", {})],
       y: [m("n1", "f3", {})],
     });
-    const r = await processWebEnquiries({ extract, fetchImpl: g.impl });
-    expect(r).toMatchObject({ attempted: 4, created: 3, deals: 2, skipped: 1, failed: 0 });
+    const r = await processWebEnquiries({ extract, extractOrder, fetchImpl: g.impl });
+    expect(r).toMatchObject({ attempted: 5, created: 4, deals: 2, orders: 1, skipped: 1, failed: 0 });
 
     const contacts = await rows<{ email: string; first_name: string; phone_e164: string; country_code: string; source: string; consent_status: string; company: string | null; notes: string | null }>(sql`
       select c.email, c.first_name, c.phone_e164, c.country_code, c.source, c.consent_status, co.name as company, c.notes
@@ -234,7 +248,15 @@ describe("shared mailboxes and website forms", () => {
     const [spam] = await rows<{ status: string; error: string }>(sql`select status, error from crm.web_enquiries where external_id = '<enqtest-f4@x>'`);
     expect(spam).toEqual({ status: "skipped", error: "Not a real enquiry (spam or test)" });
 
+    // A shop order: the buyer becomes a contact (NZ from the order), samples sent ticked, logged, no deal.
+    const [buyer] = await rows<{ source: string; country_code: string; city: string; samples_sent: boolean; deals: number; order: { number: string; samples: boolean } }>(sql`
+      select c.source, c.country_code, c.city, c.samples_sent,
+             (select count(*)::int from crm.deals where primary_contact_id = c.id) as deals,
+             (select metadata -> 'shop_order' from crm.activities where contact_id = c.id) as order
+      from crm.contacts c where c.email = 'sam@shop.enqtest.test'`);
+    expect(buyer).toEqual({ source: "shop", country_code: "NZ", city: "Christchurch", samples_sent: true, deals: 0, order: { number: "1042", items: [{ name: "Sample pack", quantity: 2 }], samples: true } });
+
     // Done is done: nothing is processed twice.
-    expect((await processWebEnquiries({ extract, fetchImpl: g.impl })).attempted).toBe(0);
+    expect((await processWebEnquiries({ extract, extractOrder, fetchImpl: g.impl })).attempted).toBe(0);
   });
 });

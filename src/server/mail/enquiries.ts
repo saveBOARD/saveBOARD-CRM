@@ -2,7 +2,14 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { rows, type Tx } from "@/server/db/client";
 import { withActor } from "@/server/db/actor";
-import { extractEnquiryWithClaude, type EnquiryExtractor, type ExtractedEnquiry } from "@/server/claude/enquiry";
+import {
+  extractEnquiryWithClaude,
+  extractOrderWithClaude,
+  type EnquiryExtractor,
+  type ExtractedEnquiry,
+  type ExtractedOrder,
+  type OrderExtractor,
+} from "@/server/claude/enquiry";
 import { claudeConfigured } from "@/server/claude/summarise";
 import { domainOf, normaliseAddress } from "./classify";
 import { MailNotConnected } from "./graph";
@@ -13,11 +20,14 @@ import { fetchMessageText, messageText } from "./text";
 // country (alternating). The subscribe tick is explicit marketing consent, unless the address is on the do-not-email
 // list. Forms older than web_enquiry_deal_max_age_days (from the 90-day read-back) create the contact and log the
 // enquiry but open no deal. Claude extracts the details; these writes are logged as Claude.
+// Shop orders (confirmed by Paul, 9 Oct 2026): logged on the buyer's timeline (contact created if new), samples sent
+// ticked for sample orders, no deal.
 
 const MAX_ATTEMPTS = 3;
 
 type Pending = {
   id: string;
+  kind: "form" | "shop_order";
   mailbox: string;
   entity: "NZ" | "AUS";
   external_id: string;
@@ -28,7 +38,7 @@ type Pending = {
   attempts: number;
 };
 
-export type EnquiryRun = { attempted: number; created: number; deals: number; skipped: number; failed: number; note?: string };
+export type EnquiryRun = { attempted: number; created: number; deals: number; orders: number; skipped: number; failed: number; note?: string };
 
 const clean = (s: string | null | undefined, max = 200) => {
   const t = s?.replace(/\s+/g, " ").trim();
@@ -54,8 +64,8 @@ async function nextOwner(entity: "NZ" | "AUS", tx: Tx): Promise<string | null> {
   return pair[(i + 1) % pair.length].id;
 }
 
-async function findOrCreateCompany(e: ExtractedEnquiry, email: string | null, country: string, ownerId: string | null, tx: Tx): Promise<string | null> {
-  const name = clean(e.company);
+async function findOrCreateCompany(company: string | null, email: string | null, country: string, ownerId: string | null, tx: Tx): Promise<string | null> {
+  const name = clean(company);
   const domain = email ? domainOf(email) : null;
   const [free] = domain ? await rows<{ free: boolean }>(sql`select exists (select 1 from crm.free_email_domains where domain = ${domain}) as free`, tx) : [{ free: true }];
   const businessDomain = domain && !free.free ? domain : null;
@@ -98,7 +108,7 @@ export async function recordEnquiry(p: Pending, e: ExtractedEnquiry, opts: { max
           tx,
         )
       : [];
-    const companyId = existing?.company_id ?? (await findOrCreateCompany(e, email, country, ownerId, tx));
+    const companyId = existing?.company_id ?? (await findOrCreateCompany(e.company, email, country, ownerId, tx));
     const notes = [
       e.region && `Region: ${clean(e.region)}`,
       e.postcode && `Postcode: ${clean(e.postcode, 20)}`,
@@ -186,6 +196,65 @@ export async function recordEnquiry(p: Pending, e: ExtractedEnquiry, opts: { max
   });
 }
 
+/** Log one shop order on the buyer's timeline. */
+export async function recordOrder(p: Pending, o: ExtractedOrder) {
+  const country = o.country === "NZ" || o.country === "AU" ? o.country : p.entity === "NZ" ? "NZ" : "AU";
+  const email = normaliseAddress(o.email);
+  return withActor({ type: "claude", profileId: p.reader_id }, async (tx) => {
+    const [existing] = email
+      ? await rows<{ id: string }>(sql`select id from crm.contacts where lower(email) = ${email} and deleted_at is null`, tx)
+      : [];
+    let contactId = existing?.id;
+    if (!contactId) {
+      const ownerId = await nextOwner(country === "NZ" ? "NZ" : "AUS", tx);
+      const companyId = await findOrCreateCompany(o.company, email, country, ownerId, tx);
+      const [c] = await rows<{ id: string }>(
+        sql`insert into crm.contacts (first_name, last_name, email, phone_raw, phone_e164, company_id, country_code, city, owner_id, source, samples_sent)
+            values (${clean(o.first_name, 100)}, ${clean(o.last_name, 100)}, ${email}, ${clean(o.phone, 50)},
+                    crm.normalize_phone(${clean(o.phone, 50)}, ${country}), ${companyId}, ${country}, ${clean(o.city, 100)}, ${ownerId},
+                    'shop', ${o.is_sample_order})
+            returning id`,
+        tx,
+      );
+      contactId = c.id;
+    } else {
+      await tx.execute(sql`
+        update crm.contacts
+           set phone_raw = coalesce(phone_raw, ${clean(o.phone, 50)}),
+               phone_e164 = coalesce(phone_e164, crm.normalize_phone(${clean(o.phone, 50)}, ${country})),
+               samples_sent = samples_sent or ${o.is_sample_order}
+         where id = ${contactId}`);
+    }
+
+    // On the timeline, linked to the buyer's open deal if they have one. No deal is created for an order.
+    const [c] = await rows<{ company_id: string | null; owner_id: string | null; deal_id: string | null }>(
+      sql`select c.company_id, c.owner_id,
+                 (select d.id from crm.deals d where d.primary_contact_id = c.id and d.deleted_at is null and d.stage not in ('won', 'lost')
+                   order by d.created_at desc limit 1) as deal_id
+          from crm.contacts c where c.id = ${contactId}`,
+      tx,
+    );
+    const meta = {
+      mailbox: p.mailbox,
+      summary_status: "done",
+      shop_order: {
+        number: clean(o.order_number, 40),
+        items: o.items.slice(0, 30).map((i) => ({ name: clean(i.name), quantity: i.quantity })),
+        samples: o.is_sample_order,
+      },
+    };
+    await tx.execute(sql`
+      insert into crm.activities (type, direction, subject, summary, occurred_at, contact_id, company_id, deal_id, owner_id, origin, external_id, metadata)
+      values ('email', 'inbound', ${p.subject}, ${clean(o.summary, 1000)}, ${p.received_at}::timestamptz, ${contactId}, ${c.company_id}, ${c.deal_id},
+              ${c.owner_id}, 'form', ${`${p.external_id}|${contactId}`}, ${JSON.stringify(meta)}::jsonb)
+      on conflict (origin, external_id) where external_id is not null do nothing`);
+    await tx.execute(sql`
+      update crm.web_enquiries set status = 'done', contact_id = ${contactId}, deal_id = ${c.deal_id}, processed_at = now(), error = null
+      where id = ${p.id}`);
+    return { contactId, created: !existing };
+  });
+}
+
 async function markFailed(p: Pending, status: "failed" | "skipped" | "pending", error: string | null) {
   await withActor({ type: "claude", profileId: p.reader_id }, (tx) =>
     tx.execute(sql`update crm.web_enquiries set status = ${status}, attempts = attempts + ${status === "skipped" ? 0 : 1},
@@ -196,19 +265,20 @@ async function markFailed(p: Pending, status: "failed" | "skipped" | "pending", 
 
 /** Process waiting website forms, newest first, within the time budget. */
 export async function processWebEnquiries(
-  opts: { budgetMs?: number; extract?: EnquiryExtractor; fetchImpl?: typeof fetch; now?: Date } = {},
+  opts: { budgetMs?: number; extract?: EnquiryExtractor; extractOrder?: OrderExtractor; fetchImpl?: typeof fetch; now?: Date } = {},
 ): Promise<EnquiryRun> {
-  const result: EnquiryRun = { attempted: 0, created: 0, deals: 0, skipped: 0, failed: 0 };
+  const result: EnquiryRun = { attempted: 0, created: 0, deals: 0, orders: 0, skipped: 0, failed: 0 };
   const extract = opts.extract ?? (claudeConfigured() ? extractEnquiryWithClaude : null);
-  if (!extract) return { ...result, note: "ANTHROPIC_API_KEY is not set" };
+  const extractOrder = opts.extractOrder ?? (claudeConfigured() ? extractOrderWithClaude : null);
+  if (!extract || !extractOrder) return { ...result, note: "ANTHROPIC_API_KEY is not set" };
   const deadline = Date.now() + (opts.budgetMs ?? 20_000);
 
   const [setting] = await rows<{ days: number | null }>(sql`select crm.setting_int('web_enquiry_deal_max_age_days') as days`);
   const maxAgeDays = setting?.days ?? 7;
   const queue = await rows<Pending>(sql`
-    select id, mailbox, entity, external_id, message_id, reader_id, subject, received_at, attempts
+    select id, kind, mailbox, entity, external_id, message_id, reader_id, subject, received_at, attempts
     from crm.web_enquiries
-    where kind = 'form' and status = 'pending' and attempts < ${MAX_ATTEMPTS} and reader_id is not null
+    where status = 'pending' and attempts < ${MAX_ATTEMPTS} and reader_id is not null
     order by received_at desc
     limit 20`);
 
@@ -222,7 +292,20 @@ export async function processWebEnquiries(
         result.skipped++;
         continue;
       }
-      const e = await extract({ subject: p.subject, receivedAt: p.received_at, text: messageText(msg) || "(no text)" });
+      const input = { subject: p.subject, receivedAt: p.received_at, text: messageText(msg) || "(no text)" };
+      if (p.kind === "shop_order") {
+        const o = await extractOrder(input);
+        if ("refused" in o || !o.is_order || (!o.email && !o.phone)) {
+          await markFailed(p, "skipped", "refused" in o ? "Claude declined this email" : !o.is_order ? "Not a customer order" : "No email or phone in the order");
+          result.skipped++;
+          continue;
+        }
+        const r = await recordOrder(p, o);
+        result.orders++;
+        if (r.created) result.created++;
+        continue;
+      }
+      const e = await extract(input);
       if ("refused" in e || !e.is_enquiry || (!e.email && !e.phone)) {
         await markFailed(p, "skipped", "refused" in e ? "Claude declined this email" : !e.is_enquiry ? "Not a real enquiry (spam or test)" : "No email or phone in the form");
         result.skipped++;

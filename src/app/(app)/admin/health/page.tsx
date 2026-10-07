@@ -105,8 +105,8 @@ export default async function HealthPage() {
         )}
         <p className="mt-3 text-sm">
           Website forms: {enq("form", "done")} done, {enq("form", "pending")} waiting, {enq("form", "skipped")} skipped (spam, tests or no contact details)
-          {enq("form", "failed") > 0 && <span className="text-bad">, {enq("form", "failed")} failed</span>}. Shop orders held for a decision:{" "}
-          {enq("shop_order", "held")}.
+          {enq("form", "failed") > 0 && <span className="text-bad">, {enq("form", "failed")} failed</span>}. Shop orders: {enq("shop_order", "done")} logged, {enq("shop_order", "pending")} waiting
+          {enq("shop_order", "failed") > 0 && <span className="text-bad">, {enq("shop_order", "failed")} failed</span>}.
         </p>
       </div>
       <div className="card mt-4 p-5">

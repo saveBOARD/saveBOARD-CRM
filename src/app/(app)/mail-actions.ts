@@ -76,7 +76,7 @@ export async function syncOutlookNow(): Promise<ActionState> {
       parts.push(`${m.mailbox}: ${m.folders.length} folders, checked ${n(ms)}, ${n(ml)} logged, ${m.queued} website forms or orders found${behind}.`);
     }
   }
-  if (e && e.attempted) parts.push(`Website forms: ${e.created} new contacts, ${e.deals} new enquiry deals, ${e.skipped} skipped${e.failed ? `, ${e.failed} failed` : ""}.`);
+  if (e && e.attempted) parts.push(`Website forms and orders: ${e.created} new contacts, ${e.deals} new enquiry deals, ${e.orders} shop orders logged, ${e.skipped} skipped${e.failed ? `, ${e.failed} failed` : ""}.`);
   if (s && s.summarised) parts.push(`Claude summarised ${s.summarised}.`);
   return { ok: true, message: parts.join(" "), savedAt: Date.now() };
 }

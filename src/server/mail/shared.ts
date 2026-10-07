@@ -62,9 +62,8 @@ async function queueNotifications(readerId: string, mailbox: string, entity: "NZ
       rest.push(m);
       continue;
     }
-    // Shop orders wait until Paul confirms how to handle them (phase 3 plan).
     queue.push(sql`(${kind}, ${mailbox}, ${entity}, ${key}, ${m.id}, ${readerId}::uuid, ${m.subject ?? null},
-                    ${m.receivedDateTime ?? new Date().toISOString()}::timestamptz, ${kind === "form" ? "pending" : "held"})`);
+                    ${m.receivedDateTime ?? new Date().toISOString()}::timestamptz, 'pending')`);
   }
   let queued = 0;
   if (queue.length) {

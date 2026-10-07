@@ -56,4 +56,4 @@ export const TONE_CLASS: Record<Tone, string> = {
 
 /** Where a company or contact came from. */
 export const sourceLabel = (s: string | null | undefined) =>
-  s ? ({ hubspot: "HubSpot", manual: "Added in the CRM", form: "Website form", import: "Import", visit: "Consultant visit" }[s] ?? s) : "";
+  s ? ({ hubspot: "HubSpot", manual: "Added in the CRM", form: "Website form", shop: "Online shop order", import: "Import", visit: "Consultant visit" }[s] ?? s) : "";
