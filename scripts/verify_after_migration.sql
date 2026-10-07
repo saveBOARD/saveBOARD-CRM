@@ -1,6 +1,6 @@
 -- =============================================================================
 -- saveBOARD CRM  |  Post-migration safety checks (READ-ONLY: changes nothing)
--- Run in the Supabase SQL editor after migrations 1-5. Every row (9) must show passed = true.
+-- Run in the Supabase SQL editor after migrations 1-5. Every row (11) must show passed = true.
 -- Do NOT put this file in supabase/migrations/: it is a checklist, not a migration.
 -- =============================================================================
 with checks as (
@@ -38,6 +38,19 @@ with checks as (
            where t.table_schema = 'erp_read'
              and not has_table_privilege('crm_app', format('%I.%I', t.table_schema, t.table_name), 'select')
          )
+
+  union all
+  select 'crm_app can run the HubSpot contacts import, but cannot read the staging tables (migration 7)',
+         has_schema_privilege('crm_app', 'crm_staging', 'usage')
+         and exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                     where n.nspname = 'crm_staging' and p.proname = 'import_hubspot_contacts'
+                       and has_function_privilege('crm_app', p.oid, 'execute'))
+         and not has_table_privilege('crm_app', 'crm_staging.hubspot_contacts', 'select,insert,update,delete')
+
+  union all
+  select 'the ERP match suggester runs with owner rights (migration 6)',
+         exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                 where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)
 
   union all
   select 'no cost, password, token or notes column is exposed in erp_read',
