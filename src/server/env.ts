@@ -9,16 +9,33 @@ export function isCrmAppUser(user: string): boolean {
   return user === "crm_app" || /^crm_app\.[a-z0-9]+$/.test(user);
 }
 
+// Messages name what is wrong (and the user found, which is not secret) but never echo the password.
 export const databaseUrlSchema = z
   .string({ error: "CRM_DATABASE_URL is not set. Copy .env.example to .env.local and fill it in." })
-  .refine((v) => /^postgres(ql)?:\/\//.test(v), "CRM_DATABASE_URL must be a postgres:// connection string")
-  .refine((v) => {
-    try {
-      return isCrmAppUser(decodeURIComponent(new URL(v).username));
-    } catch {
-      return false;
+  .trim()
+  .superRefine((v, ctx) => {
+    if (!/^postgres(ql)?:\/\//.test(v)) {
+      ctx.addIssue({ code: "custom", message: "CRM_DATABASE_URL must start with postgresql://" });
+      return;
     }
-  }, "CRM_DATABASE_URL must connect as crm_app (never postgres or the service role)");
+    let url: URL;
+    try {
+      url = new URL(v);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "CRM_DATABASE_URL is not a valid connection string (often a symbol such as @ # / ? : in the password: use letters and digits only)",
+      });
+      return;
+    }
+    const user = decodeURIComponent(url.username);
+    if (!isCrmAppUser(user)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `CRM_DATABASE_URL connects as "${user || "(no user)"}" but must connect as crm_app (through the pooler: crm_app.<project-ref>), never postgres or the service role`,
+      });
+    }
+  });
 
 let cached: { raw: string | undefined; databaseUrl: string } | undefined;
 

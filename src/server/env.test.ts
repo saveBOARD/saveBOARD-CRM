@@ -29,3 +29,18 @@ describe("databaseUrlSchema", () => {
     expect(databaseUrlSchema.safeParse("https://lfk.supabase.co").success).toBe(false);
   });
 });
+
+describe("databaseUrlSchema messages", () => {
+  const msg = (v: string) => databaseUrlSchema.safeParse(v).error?.issues[0]?.message ?? "ok";
+  it("names the wrong user it found, never the password", () => {
+    const m = msg("postgresql://postgres.abcdefghij:S3cretPw@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres");
+    expect(m).toContain('connects as "postgres.abcdefghij"');
+    expect(m).not.toContain("S3cretPw");
+  });
+  it("explains a password that breaks the connection string", () => {
+    expect(msg("postgresql://crm_app.abcdefghij:pa#ss@host:6543/postgres")).toMatch(/not a valid connection string|connects as/);
+  });
+  it("ignores spaces around the value", () => {
+    expect(msg("  postgresql://crm_app.abcdefghij:pw@host:6543/postgres \n")).toBe("ok");
+  });
+});
