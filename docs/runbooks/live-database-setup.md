@@ -48,7 +48,7 @@ select 'ERP tables postgres cannot read', coalesce((select string_agg(c.relname,
 
 ## 3. Run the five migrations (SQL editor)
 
-For each file below, in this order: open it in the repo (GitHub or locally), copy the **whole file**, paste into a new SQL editor tab, and click **Run**. Each should finish with "Success. No rows returned" (migration 5 may say "Success" with nothing else).
+For each file below, in this order: open it in the repo (GitHub or locally), copy the **whole file** (GitHub: **Copy raw file**), paste into a new SQL editor tab, make sure **no text is highlighted** (Supabase runs only highlighted text when there is any), and click **Run**. Each should finish with "Success. No rows returned" (migration 5 may say "Success" with nothing else).
 
 1. `supabase/migrations/20261003000100_crm_schema.sql`
 2. `supabase/migrations/20261003000200_erp_read_views.sql`  (the ERP-facing one you approved on 4 Oct 2026)
@@ -93,9 +93,9 @@ Never send the password or the full connection string in chat or email.
 
 ## 5. Safety checks (SQL editor, read-only)
 
-Paste and run `scripts/verify_after_migration.sql`. **All 9 rows must show `passed = true`.**
+Paste and run `scripts/verify_after_migration.sql`. **Every row (11) must show `passed = true`.**
 
-Then run this, which compares the CRM's view of customers with the ERP's own count:
+Then, in a **new tab**, run this, which compares the CRM's view of customers with the ERP's own count (the SQL editor only shows the last result in a tab):
 
 ```sql
 select (select count(*) from erp_read.customers)                        as crm_sees,
@@ -115,6 +115,15 @@ The two numbers must be the same.
 Send: "Live migrations done", the results of step 2, and that step 5 showed 9 passes and matching counts. **No passwords.**
 
 ---
+
+## Later migrations
+
+Run each new migration the same way as step 3 (whole file, new tab, nothing highlighted, Run, expect Success), then re-run the step 5 safety checks.
+
+| # | File | Status | Why |
+|---|---|---|---|
+| 6 | `supabase/migrations/20261005000100_suggest_matches_definer.sql` | Done 7 Oct 2026 | Lets the CRM's "Suggest matches" button work. Changes no ERP table. |
+| 7 | `supabase/migrations/20261006000100_import_hubspot_contacts.sql` | Done 7 Oct 2026 | The in-app HubSpot contacts import (Imports screen). Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
