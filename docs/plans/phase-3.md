@@ -1,6 +1,6 @@
 # Phase 3 plan: capture and chase
 
-Status: **draft for Paul's approval** (7 Oct 2026). Brief: `docs/DESIGN.md`, build phase 3 ("Capture and chase: Outlook sync, the follow-up engine, the daily digest and Claude-drafted chases. Website form posts to the CRM.").
+Status: **approved by Paul, 7 Oct 2026**, with the answers below. Brief: `docs/DESIGN.md`, build phase 3 ("Capture and chase: Outlook sync, the follow-up engine, the daily digest and Claude-drafted chases. Website form posts to the CRM.").
 
 ## Goal
 
@@ -23,7 +23,12 @@ No enquiry goes quiet. Emails with customers are logged on their own, with a sho
 | Retention | Call notes 2 years (and email summaries, see question 4). |
 | Timings | Chase after 7 days quiet; quote expiry warning 3 days before; first response within 1 business day; existing customers every 2 months. All confirmed. |
 | Daily digest | Email. |
-| Website forms | NZ forms arrive at `enquiries@saveboard.nz`, AUS forms at `sales@saveboard.com.au`. |
+| Website forms | NZ forms arrive at `enquiries@saveboard.nz`, AUS forms at `sales@saveboard.com.au`. Both are **shared mailboxes** Paul has open in Outlook (each with its own Inbox; Sales also has an "Enquiries" folder). |
+| Q1 digest | Internal digest by a small email service, locked to the CRM users; hard rule 4 reworded to "never sends email to customers or anyone outside saveBOARD". |
+| Q2 mailboxes | Shared: the IT company adds delegated `Mail.Read.Shared` (admin consent). Example form emails still to come. |
+| Q3 owners | As suggested: NZ enquiries Paul Charteris, AUS enquiries Mark Atkinson (to confirm). |
+| Q4 to Q9 | As recommended: retention 2 years for email summaries too; one click to Outlook Drafts; 90-day back-fill; check-ins only for ERP customers who ordered in the last 2 years; ERP quote status refreshed now, stage moves in phase 5; one-to-one chase drafts to unsubscribed contacts with an open deal allowed with a warning, never to bounced. |
+| Q10 voice | Example follow-up emails still to come. |
 
 ## Build order
 
