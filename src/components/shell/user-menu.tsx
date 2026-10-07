@@ -1,4 +1,4 @@
-import { Activity, Link2, LogOut } from "lucide-react";
+import { Activity, Link2, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "@/auth";
 import type { Profile } from "@/server/auth/profiles";
@@ -33,6 +33,10 @@ export function UserMenu({ user }: { user: Profile }) {
           <div className="font-medium">{user.displayName}</div>
           <div className="truncate text-xs text-muted">{user.email}</div>
         </div>
+        <Link href="/settings/outlook" className="flex items-center gap-2 px-4 py-2 hover:bg-page">
+          <Mail className="h-4 w-4" aria-hidden />
+          Outlook connection
+        </Link>
         {user.role === "admin" && (
           <Link href="/admin/matches" className="flex items-center gap-2 px-4 py-2 hover:bg-page">
             <Link2 className="h-4 w-4" aria-hidden />

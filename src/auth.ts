@@ -4,6 +4,8 @@ import { ZodError } from "zod";
 import { authStatus } from "@/server/auth/config";
 import { graphAddresses } from "@/server/auth/graph";
 import { claimProfile, profileByOid, type Role } from "@/server/auth/profiles";
+import { saveMailAccount } from "@/server/mail/accounts";
+import { forgetGraphToken } from "@/server/mail/graph";
 
 /** A readable one-line reason: settings problems (Zod) list their messages; database errors give the cause. */
 function describeError(e: unknown): string {
@@ -55,16 +57,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!status.configured) return refuse("sign-in settings incomplete");
       if (!claims.oid) return refuse("no account id (oid) in the Microsoft token");
       if (claims.tid?.toLowerCase() !== status.tenantId) return refuse(`account is from another tenant (${claims.tid})`);
+      let match: Awaited<ReturnType<typeof claimProfile>> = null;
       try {
         const fromToken = [claims.email ?? "", claims.preferred_username ?? ""];
-        if (await claimProfile(fromToken, claims.oid)) return true;
+        match = await claimProfile(fromToken, claims.oid);
         // The sign-in name (UPN) can differ from the email the CRM knows: ask Graph for the account's addresses.
-        const fromGraph = account?.access_token ? await graphAddresses(account.access_token) : [];
-        if (await claimProfile(fromGraph, claims.oid)) return true;
-        return refuse(`no active CRM user with any of: ${[...new Set([...fromToken, ...fromGraph].filter(Boolean))].join(", ")}`);
+        const fromGraph = match || !account?.access_token ? [] : await graphAddresses(account.access_token);
+        match ??= await claimProfile(fromGraph, claims.oid);
+        if (!match) return refuse(`no active CRM user with any of: ${[...new Set([...fromToken, ...fromGraph].filter(Boolean))].join(", ")}`);
       } catch (e) {
         return refuse(`error while checking the CRM user: ${describeError(e)}`);
       }
+      // "Connect Outlook" signs in again asking for mail access: keep the (encrypted) refresh token so the CRM can
+      // read this user's mail in the background. A failure here never blocks sign-in.
+      if (account?.refresh_token && /\bMail\.ReadWrite\b/i.test(account.scope ?? "")) {
+        try {
+          await saveMailAccount({ type: "user", profileId: match.id }, match.id, claims.preferred_username ?? match.email, account.refresh_token, account.scope ?? "");
+          forgetGraphToken(match.id);
+        } catch (e) {
+          console.warn(`[auth] Outlook connection not saved for ${match.email}: ${describeError(e)}`);
+        }
+      }
+      return true;
     },
     async jwt({ token, profile }) {
       if (profile) {

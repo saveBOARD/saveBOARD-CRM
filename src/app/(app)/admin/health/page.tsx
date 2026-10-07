@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireAdmin } from "@/server/auth/session";
 import { getHealth } from "@/server/health";
+import { listMailAccounts } from "@/server/mail/accounts";
+import { mailKeyStatus } from "@/server/mail/crypto";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "System health" };
@@ -17,7 +19,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default async function HealthPage() {
   await requireAdmin();
-  const h = await getHealth();
+  const [h, mail] = await Promise.all([getHealth(), listMailAccounts().catch(() => [])]);
+  const key = mailKeyStatus();
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -43,6 +46,24 @@ export default async function HealthPage() {
           Can&apos;t reach the database: {h.error}
         </p>
       )}
+      <div className="card mt-4 p-5">
+        <h2 className="mb-3 font-medium">Outlook connections</h2>
+        {!key.ok && <p className="mb-2 text-sm text-bad">{key.problem}: nobody can connect Outlook until it is set in Vercel.</p>}
+        {mail.length === 0 ? (
+          <p className="text-sm text-muted">Nobody has connected Outlook yet.</p>
+        ) : (
+          <ul className="grid gap-1 text-sm">
+            {mail.map((m) => (
+              <li key={m.profile_id}>
+                <b>{m.display_name}</b> ({m.mailbox}):{" "}
+                <span className={m.status === "connected" ? "text-ok" : "text-bad"}>{m.status === "connected" ? "connected" : "needs reconnecting"}</span>
+                {m.last_refresh_at && <span className="text-muted">, last used {formatDateTime(m.last_refresh_at)}</span>}
+                {m.last_error && <span className="text-bad"> ({m.last_error})</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

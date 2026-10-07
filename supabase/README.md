@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026 (11 checks pass). **8 still to run.**
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 ran on 7 Oct 2026 (12 checks pass). **9 still to run.**
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
@@ -17,7 +17,8 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 6 | `20261005000100_suggest_matches_definer.sql` | Lets the app run the ERP match suggester (pg_trgm lives in `extensions`, which `crm_app` cannot use) | No |
 | 7 | `20261006000100_import_hubspot_contacts.sql` | In-app HubSpot contacts import: one function `crm_app` may run (no direct access to the staging tables) | No |
 | 8 | `20261007000100_hubspot_notes_and_consent.sql` | HubSpot notes import, email consent from campaign results, do-not-email list (`crm.email_suppressions`) applied to new contacts | No |
-| - | `../scripts/verify_after_migration.sql` | 12 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
+| 9 | `20261008000100_mail_accounts.sql` | Outlook connections: one row per user, the Microsoft refresh token stored encrypted (key in the `MAIL_TOKEN_KEY` app setting, never in the database) | No |
+| - | `../scripts/verify_after_migration.sql` | 13 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
 

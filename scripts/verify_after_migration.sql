@@ -59,6 +59,12 @@ with checks as (
                        and has_function_privilege('crm_app', p.oid, 'execute'))
 
   union all
+  select 'Outlook connections table exists with row-level security, and crm_app can use it (migration 9)',
+         exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                 where n.nspname = 'crm' and c.relname = 'mail_accounts' and c.relrowsecurity)
+         and has_table_privilege('crm_app', 'crm.mail_accounts', 'select,insert,update,delete')
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)
