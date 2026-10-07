@@ -4,7 +4,8 @@ import { authStatus } from "@/server/auth/config";
 // Quick check before every request (Next.js "proxy", formerly middleware): no sign-in cookie, no page.
 // It only looks for the cookie; the real check (valid session + active CRM profile) is requireUser() in the app.
 
-const PUBLIC = ["/signin", "/api/auth"];
+// /api/cron routes check their own secret (CRON_SECRET), since no one is signed in when Vercel calls them.
+const PUBLIC = ["/signin", "/api/auth", "/api/cron"];
 
 function hasSessionCookie(req: NextRequest) {
   return req.cookies.getAll().some((c) => /^(__Secure-)?authjs\.session-token(\.\d+)?$/.test(c.name));

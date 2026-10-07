@@ -57,11 +57,34 @@ export function forgetGraphToken(profileId: string) {
   cache.delete(profileId);
 }
 
-/** GET a Graph path (e.g. "/me/mailFolders/inbox") as this user. */
-export async function graphGet<T>(profileId: string, path: string, fetchImpl: typeof fetch = fetch): Promise<T> {
+const GRAPH = "https://graph.microsoft.com/v1.0";
+
+export class GraphError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "GraphError";
+  }
+}
+
+/**
+ * GET from Graph as this user: a path ("/me/mailFolders/inbox") or a full link Graph handed back (paging and
+ * change-tracking links). Only graph.microsoft.com is ever called with the token.
+ */
+export async function graphGet<T>(profileId: string, pathOrUrl: string, fetchImpl: typeof fetch = fetch, headers: Record<string, string> = {}): Promise<T> {
+  const url = pathOrUrl.startsWith("/") ? `${GRAPH}${pathOrUrl}` : pathOrUrl;
+  if (!url.startsWith(`${GRAPH}/`)) throw new Error("Refusing to send the Microsoft token outside graph.microsoft.com");
   const token = await graphToken(profileId, fetchImpl);
-  const res = await fetchImpl(`https://graph.microsoft.com/v1.0${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-  if (!res.ok) throw new Error(`Microsoft Graph ${path} returned ${res.status}`);
+  const res = await fetchImpl(url, { headers: { ...headers, Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: { code?: string; message?: string } };
+    const code = body.error?.code ?? String(res.status);
+    if (res.status === 401) forgetGraphToken(profileId);
+    throw new GraphError(res.status, code, `Microsoft Graph returned ${res.status} (${code})`);
+  }
   return (await res.json()) as T;
 }
 

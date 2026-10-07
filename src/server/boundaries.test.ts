@@ -39,6 +39,18 @@ describe("hard rules", () => {
     expect(offenders((f) => /Mail\.Send/.test(f.text))).toEqual([]);
   });
 
+  it("reads mail headers only: the Outlook sync never asks Microsoft for email bodies", () => {
+    const sync = files.filter((f) => f.path.startsWith("server/mail/") && /MESSAGE_FIELDS\s*=/.test(f.text));
+    expect(sync.length).toBe(1);
+    const fields = /MESSAGE_FIELDS\s*=\s*"([^"]+)"/.exec(sync[0].text)?.[1] ?? "";
+    expect(fields.split(",").filter((f) => /body|uniqueBody|attachments|bodyPreview/i.test(f))).toEqual([]);
+  });
+
+  it("every API route checks a signed-in user or the cron secret", () => {
+    const routes = files.filter((f) => f.path.startsWith("app/api/") && f.path.endsWith("/route.ts") && !f.path.startsWith("app/api/auth/"));
+    expect(routes.filter((f) => !/requireUser\(|requireAdmin\(|process\.env\.CRON_SECRET/.test(f.text)).map((f) => f.path)).toEqual([]);
+  });
+
   it("keeps database drivers on the server", () => {
     const dbImport = /from\s+["'](postgres|drizzle-orm[^"']*|@\/server\/db\/[^"']*)["']/;
     expect(offenders((f) => dbImport.test(f.text) && !f.path.startsWith("server/"))).toEqual([]);

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/server/auth/session";
 import { getHealth } from "@/server/health";
 import { listMailAccounts } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
+import { listSyncStatus } from "@/server/mail/sync";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "System health" };
@@ -19,7 +20,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default async function HealthPage() {
   await requireAdmin();
-  const [h, mail] = await Promise.all([getHealth(), listMailAccounts().catch(() => [])]);
+  const [h, mail, sync] = await Promise.all([getHealth(), listMailAccounts().catch(() => []), listSyncStatus().catch(() => [])]);
+  const cronReady = (process.env.CRON_SECRET ?? "").length >= 16;
   const key = mailKeyStatus();
 
   return (
@@ -49,6 +51,7 @@ export default async function HealthPage() {
       <div className="card mt-4 p-5">
         <h2 className="mb-3 font-medium">Outlook connections</h2>
         {!key.ok && <p className="mb-2 text-sm text-bad">{key.problem}: nobody can connect Outlook until it is set in Vercel.</p>}
+        {!cronReady && <p className="mb-2 text-sm text-bad">CRON_SECRET is not set (at least 16 characters): the 10-minute mail sync can&apos;t run. &quot;Sync now&quot; still works.</p>}
         {mail.length === 0 ? (
           <p className="text-sm text-muted">Nobody has connected Outlook yet.</p>
         ) : (
@@ -59,6 +62,14 @@ export default async function HealthPage() {
                 <span className={m.status === "connected" ? "text-ok" : "text-bad"}>{m.status === "connected" ? "connected" : "needs reconnecting"}</span>
                 {m.last_refresh_at && <span className="text-muted">, last used {formatDateTime(m.last_refresh_at)}</span>}
                 {m.last_error && <span className="text-bad"> ({m.last_error})</span>}
+                {sync
+                  .filter((s) => s.profile_id === m.profile_id)
+                  .map((s) => (
+                    <span key={s.folder} className="block pl-4 text-muted">
+                      {s.folder === "inbox" ? "Inbox" : "Sent Items"}: {s.last_error ? <span className="text-bad">{s.last_error}</span> : s.catching_up ? "catching up" : "up to date"}
+                      , last checked {formatDateTime(s.last_run_at)}, {s.messages_logged.toLocaleString("en-NZ")} logged
+                    </span>
+                  ))}
               </li>
             ))}
           </ul>

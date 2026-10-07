@@ -65,6 +65,17 @@ with checks as (
          and has_table_privilege('crm_app', 'crm.mail_accounts', 'select,insert,update,delete')
 
   union all
+  select 'Outlook sync: ignore list with row-level security, sync progress columns, 90-day back-fill setting (migration 10)',
+         exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                 where n.nspname = 'crm' and c.relname = 'mail_ignore' and c.relrowsecurity)
+         and has_table_privilege('crm_app', 'crm.mail_ignore', 'select,insert,update,delete')
+         and exists (select 1 from information_schema.columns
+                     where table_schema = 'crm' and table_name = 'mail_sync_state' and column_name = 'next_link')
+         and exists (select 1 from information_schema.columns
+                     where table_schema = 'crm' and table_name = 'unmatched_emails' and column_name = 'mailbox')
+         and exists (select 1 from crm.settings where key = 'mail_backfill_days')
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

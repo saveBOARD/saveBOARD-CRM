@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Mail } from "lucide-react";
 import { connectOutlook, disconnectOutlook } from "@/app/(app)/mail-actions";
-import { TestOutlookButton } from "@/components/mail/test-button";
+import { SyncOutlookButton, TestOutlookButton } from "@/components/mail/test-button";
 import { PageHeader } from "@/components/shell/page-header";
 import { Field, Panel, Pill } from "@/components/ui/detail";
 import { formatDateTime } from "@/lib/format";
 import { requireUser } from "@/server/auth/session";
 import { getMailAccount } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
+import { listSyncStatus } from "@/server/mail/sync";
 
 export const metadata: Metadata = { title: "Outlook connection" };
+// "Sync now" can take up to about 40 seconds on a first, 90-day read.
+export const maxDuration = 60;
+
+const FOLDER_LABEL = { inbox: "Inbox", sentitems: "Sent Items" } as const;
 
 export default async function OutlookPage({ searchParams }: PageProps<"/settings/outlook">) {
   const user = await requireUser();
-  const [account, sp] = await Promise.all([getMailAccount(user.id), searchParams]);
+  const [account, sp, sync] = await Promise.all([getMailAccount(user.id), searchParams, listSyncStatus(user.id)]);
   const ready = mailKeyStatus().ok;
   const justConnected = sp.connected === "1";
 
@@ -77,6 +83,38 @@ export default async function OutlookPage({ searchParams }: PageProps<"/settings
           {account?.status === "connected" && <TestOutlookButton />}
         </div>
       </Panel>
+      {account && (
+        <Panel title="Mail sync">
+          <div className="grid gap-4">
+            <p className="text-sm text-muted">
+              Every 10 minutes the CRM reads new mail in your Inbox and Sent Items. Emails with contacts go on their timeline (subject, date and a
+              link, never the email itself); emails from unknown senders go to <Link href="/inbox" className="text-link hover:underline">Inbox triage</Link>.
+              The first sync reads back 90 days and may take a few runs.
+            </p>
+            {sync.length === 0 ? (
+              <p className="text-sm">Not synced yet.</p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {sync.map((s) => (
+                  <Field key={s.folder} label={FOLDER_LABEL[s.folder]}>
+                    {s.last_error ? (
+                      <span className="text-bad">Problem: {s.last_error}</span>
+                    ) : s.catching_up ? (
+                      "Catching up"
+                    ) : (
+                      <span className="text-ok">Up to date</span>
+                    )}
+                    <span className="block text-xs text-muted">
+                      Last checked {formatDateTime(s.last_run_at)}; {s.messages_seen.toLocaleString("en-NZ")} read, {s.messages_logged.toLocaleString("en-NZ")} logged
+                    </span>
+                  </Field>
+                ))}
+              </div>
+            )}
+            {account.status === "connected" && <SyncOutlookButton />}
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }
