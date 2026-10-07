@@ -99,6 +99,12 @@ describe("shared mailbox notifications", () => {
     expect(isShopOrder("Order received")).toBe(false);
   });
 
+  it("recognises the real Wix subjects (9 Oct 2026)", () => {
+    expect(isWebsiteForm("saveBOARD Enquiries Form 2 got a new submission")).toBe(true);
+    expect(isWebsiteForm("saveBOARD Enquiries Form 5 got a new submission")).toBe(true);
+    expect(isWebsiteForm("RE: saveBOARD Enquiries Form 2 got a new submission")).toBe(false);
+  });
+
   it("recognises them from Outlook's preview when the subject says something else", () => {
     const formPreview = "A site visitor just submitted your form saveBOARD Enquiries Form 2 on Save Board NZ Submission summary: Full Name:";
     expect(isWebsiteForm("New submission", formPreview)).toBe(true);

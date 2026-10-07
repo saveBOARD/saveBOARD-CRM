@@ -148,12 +148,13 @@ export function splitName(name: string | null, address: string): { first: string
 }
 
 /**
- * Website form notifications from the website's form tool. Their email opens with "A site visitor just submitted your
- * form saveBOARD Enquiries Form 2 on Save Board NZ" (or "...Form 5 on Save Board AU"); examples from Paul, 7 Oct 2026.
- * Recognised from the subject or the preview. Replies and forwards are ordinary email.
+ * Website form notifications, sent by Wix (info@pr01.wixemails.com "on behalf of" the shared mailbox itself, so they
+ * look internal). Subject "saveBOARD Enquiries Form 2 got a new submission" (Form 5 for AUS); the email opens with
+ * "A site visitor just submitted your form saveBOARD Enquiries Form 2 on Save Board NZ". Examples from Paul, 7 and 9
+ * Oct 2026. Recognised from the subject or the preview. Replies and forwards are ordinary email.
  */
 const REPLY = /^\s*(re|fw|fwd)\s*:/i;
-const FORM = /submitted (your|a) form|form \d+ on save ?board/i;
+const FORM = /submitted (your|a) form|form \d+ on save ?board|form \d+ got a new submission/i;
 const ORDER = /new order received|\bnew order\b.*#\s*\d+/i;
 
 export function isWebsiteForm(subject: string | null | undefined, preview?: string | null): boolean {
