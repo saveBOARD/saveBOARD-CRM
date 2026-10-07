@@ -6,6 +6,8 @@ import { listMailAccounts } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
 import { listSyncStatus } from "@/server/mail/sync";
 import { summaryStatus } from "@/server/mail/summaries";
+import { listSharedStatus } from "@/server/mail/shared";
+import { webEnquiryStatus } from "@/server/mail/enquiries";
 import { claudeConfigured, SUMMARY_MODEL } from "@/server/claude/summarise";
 import { formatDateTime } from "@/lib/format";
 
@@ -28,6 +30,8 @@ export default async function HealthPage() {
     listSyncStatus().catch(() => []),
     summaryStatus().catch(() => null),
   ]);
+  const [shared, enquiries] = await Promise.all([listSharedStatus().catch(() => []), webEnquiryStatus().catch(() => [])]);
+  const enq = (kind: string, status: string) => enquiries.find((e) => e.kind === kind && e.status === status)?.n ?? 0;
   const cronReady = (process.env.CRON_SECRET ?? "").length >= 16;
   const key = mailKeyStatus();
 
@@ -81,6 +85,29 @@ export default async function HealthPage() {
             ))}
           </ul>
         )}
+      </div>
+      <div className="card mt-4 p-5">
+        <h2 className="mb-3 font-medium">Shared mailboxes and website enquiries</h2>
+        {shared.length === 0 ? (
+          <p className="text-sm text-muted">Not read yet. The 10-minute job reads them using a connected admin&apos;s Outlook access.</p>
+        ) : (
+          <ul className="grid gap-1 text-sm">
+            {shared.map((f) => (
+              <li key={`${f.mailbox}/${f.folder_path}`}>
+                <b>{f.mailbox}</b> {f.folder_path}:{" "}
+                {f.last_error ? <span className="text-bad">{f.last_error}</span> : f.catching_up ? "catching up" : <span className="text-ok">up to date</span>}
+                <span className="text-muted">
+                  , last checked {formatDateTime(f.last_run_at)}, {f.messages_logged.toLocaleString("en-NZ")} logged{f.reader && ` (read as ${f.reader})`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-sm">
+          Website forms: {enq("form", "done")} done, {enq("form", "pending")} waiting, {enq("form", "skipped")} skipped (spam, tests or no contact details)
+          {enq("form", "failed") > 0 && <span className="text-bad">, {enq("form", "failed")} failed</span>}. Shop orders held for a decision:{" "}
+          {enq("shop_order", "held")}.
+        </p>
       </div>
       <div className="card mt-4 p-5">
         <h2 className="mb-3 font-medium">Claude email summaries</h2>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classify, isIgnored, splitName, suggestedDomain, type GraphMessage } from "./classify";
+import { classify, isIgnored, isShopOrder, isWebsiteForm, splitName, suggestedDomain, type GraphMessage } from "./classify";
 
 const addr = (address: string, name?: string) => ({ emailAddress: { address, name } });
 const msg = (m: Partial<GraphMessage>): GraphMessage => ({
@@ -85,5 +85,17 @@ describe("helpers", () => {
     expect(splitName("Smith, Jane", "j@x.com")).toEqual({ first: "Jane", last: "Smith" });
     expect(splitName("'Jane'", "j@x.com")).toEqual({ first: "Jane", last: null });
     expect(splitName("j@x.com", "j@x.com")).toEqual({ first: null, last: null });
+  });
+});
+
+describe("shared mailbox notifications", () => {
+  it("recognises website form and shop order emails by subject", () => {
+    expect(isWebsiteForm("A site visitor just submitted your form saveBOARD Enquiries Form 2 on Save Board NZ")).toBe(true);
+    expect(isWebsiteForm("A site visitor just submitted your form Form 5 on Save Board AU")).toBe(true);
+    expect(isWebsiteForm("RE: your form for the consent")).toBe(false);
+    expect(isShopOrder("New Order Received! Order #1042")).toBe(true);
+    expect(isShopOrder("Re: New Order Received! Order #1042")).toBe(false);
+    expect(isWebsiteForm("FW: A site visitor just submitted your form Form 5 on Save Board AU")).toBe(false);
+    expect(isShopOrder("Order received")).toBe(false);
   });
 });

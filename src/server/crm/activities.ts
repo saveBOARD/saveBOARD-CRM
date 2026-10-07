@@ -19,6 +19,8 @@ export type Activity = {
   follow_up_on: string | null;
   summary_status: string | null;
   summary_error: string | null;
+  /** Set when the email was read from a shared mailbox (enquiries@ / sales@). */
+  shared_mailbox: string | null;
   owner: string | null;
   contact_id: string | null;
   contact: string | null;
@@ -43,6 +45,8 @@ export async function listActivities(scope: Scope, limit = 100): Promise<Activit
     select a.id, a.type, a.direction, a.subject, a.summary, a.occurred_at, a.origin, a.external_url,
            a.metadata ->> 'next_step' as next_step, a.metadata ->> 'follow_up_on' as follow_up_on,
            a.metadata ->> 'summary_status' as summary_status, a.metadata ->> 'summary_error' as summary_error,
+           case when exists (select 1 from crm.shared_mail_folders f where f.mailbox = a.metadata ->> 'mailbox')
+                then a.metadata ->> 'mailbox' end as shared_mailbox,
            p.display_name as owner,
            a.contact_id, nullif(trim(concat_ws(' ', ct.first_name, ct.last_name)), '') as contact,
            a.deal_id, d.title as deal

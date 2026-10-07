@@ -81,6 +81,15 @@ with checks as (
                  where r.rolname = 'crm_app' and 'statement_timeout=30s' = any (s.setconfig))
 
   union all
+  select 'shared mailbox folders and website enquiry queue exist with row-level security; enquiry owner settings (migration 12)',
+         (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'crm' and c.relname in ('shared_mail_folders', 'web_enquiries') and c.relrowsecurity) = 2
+         and has_table_privilege('crm_app', 'crm.web_enquiries', 'select,insert,update,delete')
+         and has_table_privilege('crm_app', 'crm.shared_mail_folders', 'select,insert,update,delete')
+         and (select count(*) from crm.settings
+               where key in ('web_enquiry_owners_nz', 'web_enquiry_owners_aus', 'web_enquiry_deal_max_age_days')) = 3
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

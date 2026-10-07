@@ -102,7 +102,7 @@ describe("Outlook mail sync", () => {
     const sent = m({ from: a("test.sync@saveboard.nz"), toRecipients: [a("jane@builder.mailtest.test")], sentDateTime: "2026-10-02T03:00:00Z" });
     const g = fakeGraph({ inbox: [[inbound, unknown], [robot, internal, { ...inbound, id: "dup" }]], sentitems: [[sent]] });
 
-    const [r] = await syncMail({ profileId, fetchImpl: g.impl });
+    const { mailboxes: [r] } = await syncMail({ profileId, fetchImpl: g.impl });
     expect(r.folders).toMatchObject([
       { folder: "inbox", seen: 5, logged: 1, triaged: 1, finished: true },
       { folder: "sentitems", seen: 1, logged: 1, triaged: 0, finished: true },
@@ -139,7 +139,7 @@ describe("Outlook mail sync", () => {
     const again = m({ from: a("jane@builder.mailtest.test"), internetMessageId: "<mailtest-1@x>" }); // already logged
     const fresh = m({ from: a("jane@builder.mailtest.test") });
     const g = fakeGraph({}, { inbox: [again, fresh] });
-    const [r] = await syncMail({ profileId, fetchImpl: g.impl });
+    const { mailboxes: [r] } = await syncMail({ profileId, fetchImpl: g.impl });
     expect(g.calls.filter((c) => c.includes("graph.microsoft.com")).every((c) => c.includes("deltatoken=1"))).toBe(true);
     expect(r.folders[0]).toMatchObject({ seen: 2, logged: 1 });
   });
@@ -147,9 +147,9 @@ describe("Outlook mail sync", () => {
   it("resumes where it stopped when the time runs out", async () => {
     await withActor(SYS, (tx) => tx.execute(sql`update crm.mail_sync_state set delta_link = null, next_link = null where profile_id = ${profileId}`));
     const g = fakeGraph({ inbox: [[m({ from: a("x@builder.mailtest.test") })], [m({ from: a("y@builder.mailtest.test") })]] });
-    const [r] = await syncMail({ profileId, fetchImpl: g.impl, budgetMs: 0 });
+    const { mailboxes: [r] } = await syncMail({ profileId, fetchImpl: g.impl, budgetMs: 0 });
     expect(r.folders).toEqual([]); // no time at all: nothing read, nothing lost
-    const [r2] = await syncMail({ profileId, fetchImpl: g.impl });
+    const { mailboxes: [r2] } = await syncMail({ profileId, fetchImpl: g.impl });
     expect(r2.folders[0]).toMatchObject({ seen: 2, finished: true });
   });
 
@@ -178,7 +178,7 @@ describe("Outlook mail sync", () => {
     const [rule] = await rows<{ kind: string }>(sql`select kind from crm.mail_ignore where pattern = 'junk.mailtest.test'`);
     expect(rule.kind).toBe("domain");
     const g2 = fakeGraph({}, { inbox: [m({ from: a("more@junk.mailtest.test") })] });
-    const [r] = await syncMail({ profileId, fetchImpl: g2.impl });
+    const { mailboxes: [r] } = await syncMail({ profileId, fetchImpl: g2.impl });
     expect(r.folders[0]).toMatchObject({ seen: 1, logged: 0, triaged: 0 });
     await expect(ignoreSender(user(), "someone@gmail.com", "domain")).rejects.toThrow(/free-mail/);
   });

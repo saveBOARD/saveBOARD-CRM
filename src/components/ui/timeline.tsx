@@ -33,7 +33,8 @@ export function Timeline({ items, empty }: { items: Activity[]; empty: string })
                   {DIRECTION[a.direction] && ` ${DIRECTION[a.direction]}`}
                 </span>
                 <span>{formatDateTime(a.occurred_at)}</span>
-                {a.owner && <span>by {a.owner}</span>}
+                {a.shared_mailbox ? <span>in {a.shared_mailbox}</span> : a.owner && <span>by {a.owner}</span>}
+                {a.origin === "form" && <span>(website form)</span>}
                 {a.contact && a.contact_id && (
                   <Link href={`/contacts/${a.contact_id}`} className="text-link hover:underline">
                     {a.contact}

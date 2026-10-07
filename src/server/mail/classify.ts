@@ -138,3 +138,18 @@ export function splitName(name: string | null, address: string): { first: string
   const parts = clean.split(/\s+/);
   return parts.length === 1 ? { first: parts[0], last: null } : { first: parts.slice(0, -1).join(" "), last: parts.at(-1)! };
 }
+
+/**
+ * Website form notifications, as sent by the website's form tool (examples from Paul, 8 Oct 2026):
+ * "A site visitor just submitted your form saveBOARD Enquiries Form 2 on Save Board NZ" / "...Form 5 on Save Board AU".
+ */
+const REPLY = /^\s*(re|fw|fwd)\s*:/i;
+
+export function isWebsiteForm(subject: string | null | undefined): boolean {
+  return !!subject && !REPLY.test(subject) && /submitted (your|a) form|form \d+ on save ?board/i.test(subject);
+}
+
+/** Online shop order notifications: "New Order Received! Order #1234". Replies and forwards are ordinary email. */
+export function isShopOrder(subject: string | null | undefined): boolean {
+  return !!subject && !REPLY.test(subject) && /new order received!?.*order\s*#/i.test(subject);
+}

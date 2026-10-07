@@ -5,6 +5,7 @@ import { withActor, type Actor } from "@/server/db/actor";
 import { listMailAccounts } from "./accounts";
 import { classify, MESSAGE_FIELDS, type Classified, type GraphMessage } from "./classify";
 import { GraphError, graphGet, MailNotConnected } from "./graph";
+import { syncSharedMailboxes, type SharedMailboxResult } from "./shared";
 
 // Outlook mail sync (phase 3.2). For each connected user, reads Inbox and Sent Items with Microsoft's change
 // tracking ("delta"), so each run only fetches what changed. Mail with a known contact becomes an email activity
@@ -19,17 +20,11 @@ const PAGE_SIZE = 50;
 
 export type FolderResult = { folder: Folder; seen: number; logged: number; triaged: number; finished: boolean; error?: string };
 export type MailboxResult = { profileId: string; name: string; folders: FolderResult[]; error?: string };
+export type SyncRun = { mailboxes: MailboxResult[]; shared: SharedMailboxResult[] };
 
-type SyncState = { delta_link: string | null; next_link: string | null };
 type Page = { value?: GraphMessage[]; "@odata.nextLink"?: string; "@odata.deltaLink"?: string };
 type Candidate = Extract<Classified, { kind: "candidate" }>;
 type ContactHit = { id: string; email: string; company_id: string | null; deal_id: string | null };
-
-function firstUrl(folder: Folder, days: number, now: Date): string {
-  const since = new Date(now.getTime() - days * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
-  const q = new URLSearchParams({ $select: MESSAGE_FIELDS, $filter: `receivedDateTime ge ${since}` });
-  return `https://graph.microsoft.com/v1.0/me/mailFolders/${folder}/messages/delta?${q}`;
-}
 
 async function loadIgnoreList(): Promise<Set<string>> {
   return new Set((await rows<{ pattern: string }>(sql`select pattern from crm.mail_ignore`)).map((r) => r.pattern));
@@ -62,7 +57,7 @@ async function findContacts(addresses: string[], tx: Tx): Promise<Map<string, Co
 }
 
 /** Log one page of messages. Returns how many activities and triage items were created. */
-export async function recordMessages(ownerId: string, mailbox: string, folder: Folder, messages: GraphMessage[], ignore: ReadonlySet<string>) {
+export async function recordMessages(ownerId: string, mailbox: string, folder: string, messages: GraphMessage[], ignore: ReadonlySet<string>) {
   const candidates = messages.map((m) => classify(m, ignore)).filter((c): c is Candidate => c.kind === "candidate");
   if (candidates.length === 0) return { logged: 0, triaged: 0 };
 
@@ -151,38 +146,43 @@ async function saveState(profileId: string, folder: Folder, patch: SQL) {
   });
 }
 
-/** Read one folder until Microsoft says we're up to date, or the deadline passes (then the next run resumes). */
-export async function syncFolder(
-  profileId: string,
-  mailbox: string,
-  folder: Folder,
-  opts: { deadline: number; ignore: ReadonlySet<string>; backfillDays: number; fetchImpl?: typeof fetch; now?: Date },
-): Promise<FolderResult> {
-  const result: FolderResult = { folder, seen: 0, logged: 0, triaged: 0, finished: false };
-  const [state] = await rows<SyncState>(
-    sql`select delta_link, next_link from crm.mail_sync_state where profile_id = ${profileId} and folder = ${folder}`,
-  );
-  const fresh = () => firstUrl(folder, opts.backfillDays, opts.now ?? new Date());
-  let url = state?.next_link ?? state?.delta_link ?? fresh();
-  let restarted = !state?.next_link && !state?.delta_link;
+export type DeltaState = { delta_link: string | null; next_link: string | null };
+export type DeltaResult = { seen: number; logged: number; triaged: number; finished: boolean; error?: string };
+
+/**
+ * Follow one folder's change tracking until Microsoft says we're up to date, or the deadline passes (the saved
+ * position lets the next run resume). Shared by the users' own folders and the shared mailboxes.
+ */
+export async function followDelta(opts: {
+  readerId: string;
+  state: DeltaState | undefined;
+  startUrl: () => string;
+  save: (patch: SQL) => Promise<void>;
+  onPage: (messages: GraphMessage[]) => Promise<{ logged: number; triaged: number }>;
+  deadline: number;
+  fetchImpl?: typeof fetch;
+}): Promise<DeltaResult> {
+  const result: DeltaResult = { seen: 0, logged: 0, triaged: 0, finished: false };
+  let url = opts.state?.next_link ?? opts.state?.delta_link ?? opts.startUrl();
+  let restarted = !opts.state?.next_link && !opts.state?.delta_link;
 
   try {
     while (Date.now() < opts.deadline) {
       let page: Page;
       try {
-        page = await graphGet<Page>(profileId, url, opts.fetchImpl, { Prefer: `odata.maxpagesize=${PAGE_SIZE}` });
+        page = await graphGet<Page>(opts.readerId, url, opts.fetchImpl, { Prefer: `odata.maxpagesize=${PAGE_SIZE}` });
       } catch (e) {
         // Microsoft forgets old change-tracking links (410 Gone, "syncStateNotFound"): start the round again.
         if (e instanceof GraphError && (e.status === 410 || /syncState/i.test(e.code)) && !restarted) {
           restarted = true;
-          url = fresh();
-          await saveState(profileId, folder, sql`delta_link = null, next_link = null`);
+          url = opts.startUrl();
+          await opts.save(sql`delta_link = null, next_link = null`);
           continue;
         }
         throw e;
       }
       const messages = page.value ?? [];
-      const r = await recordMessages(profileId, mailbox, folder, messages, opts.ignore);
+      const r = await opts.onPage(messages);
       result.seen += messages.length;
       result.logged += r.logged;
       result.triaged += r.triaged;
@@ -190,19 +190,48 @@ export async function syncFolder(
       const counts = sql`messages_seen = messages_seen + ${messages.length}, messages_logged = messages_logged + ${r.logged}`;
       if (page["@odata.nextLink"]) {
         url = page["@odata.nextLink"];
-        await saveState(profileId, folder, sql`next_link = ${url}, last_error = null, ${counts}`);
+        await opts.save(sql`next_link = ${url}, last_error = null, ${counts}`);
       } else {
-        await saveState(profileId, folder, sql`delta_link = ${page["@odata.deltaLink"] ?? null}, next_link = null,
-                                                last_success_at = now(), last_error = null, ${counts}`);
+        await opts.save(sql`delta_link = ${page["@odata.deltaLink"] ?? null}, next_link = null,
+                             last_success_at = now(), last_error = null, ${counts}`);
         result.finished = true;
         break;
       }
     }
   } catch (e) {
     result.error = describe(e);
-    await saveState(profileId, folder, sql`last_error = ${result.error}`);
+    await opts.save(sql`last_error = ${result.error}`);
   }
   return result;
+}
+
+/** The start of a folder's change tracking: header fields only, received in the last `days` days. */
+export function deltaStartUrl(folderPath: string, days: number, now: Date = new Date()): string {
+  const since = new Date(now.getTime() - days * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+  const q = new URLSearchParams({ $select: MESSAGE_FIELDS, $filter: `receivedDateTime ge ${since}` });
+  return `https://graph.microsoft.com/v1.0${folderPath}/messages/delta?${q}`;
+}
+
+/** Read one of a user's own folders (Inbox or Sent Items). */
+export async function syncFolder(
+  profileId: string,
+  mailbox: string,
+  folder: Folder,
+  opts: { deadline: number; ignore: ReadonlySet<string>; backfillDays: number; fetchImpl?: typeof fetch; now?: Date },
+): Promise<FolderResult> {
+  const [state] = await rows<DeltaState>(
+    sql`select delta_link, next_link from crm.mail_sync_state where profile_id = ${profileId} and folder = ${folder}`,
+  );
+  const r = await followDelta({
+    readerId: profileId,
+    state,
+    startUrl: () => deltaStartUrl(`/me/mailFolders/${folder}`, opts.backfillDays, opts.now ?? new Date()),
+    save: (patch) => saveState(profileId, folder, patch),
+    onPage: (messages) => recordMessages(profileId, mailbox, folder, messages, opts.ignore),
+    deadline: opts.deadline,
+    fetchImpl: opts.fetchImpl,
+  });
+  return { folder, ...r };
 }
 
 function describe(e: unknown): string {
@@ -210,8 +239,13 @@ function describe(e: unknown): string {
   return e instanceof Error ? e.message.slice(0, 300) : "Unknown error";
 }
 
-/** Sync every connected mailbox (or just one), within a time budget. */
-export async function syncMail(opts: { budgetMs?: number; profileId?: string; fetchImpl?: typeof fetch } = {}): Promise<MailboxResult[]> {
+/**
+ * Sync every connected mailbox (or just one), within a time budget, then the shared enquiries mailboxes
+ * (always on the scheduled run; on "Sync now" when asked, using that user's access).
+ */
+export async function syncMail(
+  opts: { budgetMs?: number; profileId?: string; shared?: boolean; fetchImpl?: typeof fetch } = {},
+): Promise<SyncRun> {
   const deadline = Date.now() + (opts.budgetMs ?? 45_000);
   const accounts = (await listMailAccounts()).filter((a) => a.status === "connected" && (!opts.profileId || a.profile_id === opts.profileId));
   const [ignore, [setting]] = await Promise.all([
@@ -220,7 +254,7 @@ export async function syncMail(opts: { budgetMs?: number; profileId?: string; fe
   ]);
   const backfillDays = setting?.days ?? 90;
 
-  const results: MailboxResult[] = [];
+  const mailboxes: MailboxResult[] = [];
   for (const a of accounts) {
     const r: MailboxResult = { profileId: a.profile_id, name: a.display_name, folders: [] };
     for (const folder of FOLDERS) {
@@ -232,10 +266,14 @@ export async function syncMail(opts: { budgetMs?: number; profileId?: string; fe
         break;
       }
     }
-    results.push(r);
+    mailboxes.push(r);
   }
+  const shared =
+    (opts.shared ?? !opts.profileId) && Date.now() < deadline
+      ? await syncSharedMailboxes({ deadline, ignore, backfillDays, fetchImpl: opts.fetchImpl, onlyReader: opts.profileId })
+      : [];
   await fileKnownSenders();
-  return results;
+  return { mailboxes, shared };
 }
 
 /**

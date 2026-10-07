@@ -7,6 +7,7 @@ import { requireUser } from "@/server/auth/session";
 import { deleteMailAccount } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
 import { forgetGraphToken, MAIL_SCOPES, testMailConnection } from "@/server/mail/graph";
+import { processWebEnquiries } from "@/server/mail/enquiries";
 import { runSummaries } from "@/server/mail/summaries";
 import { syncMail } from "@/server/mail/sync";
 
@@ -44,25 +45,38 @@ export async function testOutlook(): Promise<ActionState> {
   }
 }
 
-/** Read new mail now instead of waiting for the 10-minute job. Same code path, this user's mailbox only. */
+/**
+ * Read new mail now instead of waiting for the 10-minute job. Same code path, this user's mailbox; for admins also
+ * the shared enquiries mailboxes and any website forms waiting there.
+ */
 export async function syncOutlookNow(): Promise<ActionState> {
   const user = await requireUser();
-  const [r] = await syncMail({ profileId: user.id, budgetMs: 35_000 });
+  const admin = user.role === "admin";
+  const { mailboxes, shared } = await syncMail({ profileId: user.id, shared: admin, budgetMs: 30_000 });
+  const r = mailboxes[0];
+  const e = r && !r.error && admin ? await processWebEnquiries({ budgetMs: 12_000 }) : null;
   // Then a few summaries for this user's newest emails; the 10-minute job does the rest.
-  const s = r && !r.error ? await runSummaries({ ownerId: user.id, budgetMs: 15_000, limit: 12 }) : null;
+  const s = r && !r.error ? await runSummaries({ ownerId: user.id, budgetMs: 12_000, limit: 10 }) : null;
   refresh();
   if (!r) return { ok: false, message: "Outlook isn't connected." };
   const error = r.error ?? r.folders.find((f) => f.error)?.error;
   if (error) return { ok: false, message: `Sync stopped: ${error}` };
-  const seen = r.folders.reduce((n, f) => n + f.seen, 0);
-  const logged = r.folders.reduce((n, f) => n + f.logged, 0);
-  const triaged = r.folders.reduce((n, f) => n + f.triaged, 0);
+  const n = (x: number) => x.toLocaleString("en-NZ");
+  const seen = r.folders.reduce((t, f) => t + f.seen, 0);
+  const logged = r.folders.reduce((t, f) => t + f.logged, 0);
+  const triaged = r.folders.reduce((t, f) => t + f.triaged, 0);
   const more = r.folders.length < 2 || r.folders.some((f) => !f.finished) ? " Still catching up: it carries on automatically." : "";
-  return {
-    ok: true,
-    message: `Checked ${seen.toLocaleString("en-NZ")} emails: ${logged} logged on contacts, ${triaged} new for triage.${more}${
-      s && s.summarised ? ` Claude summarised ${s.summarised}.` : ""
-    }`,
-    savedAt: Date.now(),
-  };
+  const parts = [`Your mailbox: checked ${n(seen)} emails, ${n(logged)} logged on contacts, ${n(triaged)} new for triage.${more}`];
+  for (const m of shared) {
+    if (m.error) parts.push(`${m.mailbox}: ${m.error}.`);
+    else {
+      const ms = m.folders.reduce((t, f) => t + f.seen, 0);
+      const ml = m.folders.reduce((t, f) => t + f.logged, 0);
+      const behind = m.folders.some((f) => !f.finished) ? " (still catching up)" : "";
+      parts.push(`${m.mailbox}: ${m.folders.length} folders, checked ${n(ms)}, ${n(ml)} logged, ${m.queued} website forms or orders found${behind}.`);
+    }
+  }
+  if (e && e.attempted) parts.push(`Website forms: ${e.created} new contacts, ${e.deals} new enquiry deals, ${e.skipped} skipped${e.failed ? `, ${e.failed} failed` : ""}.`);
+  if (s && s.summarised) parts.push(`Claude summarised ${s.summarised}.`);
+  return { ok: true, message: parts.join(" "), savedAt: Date.now() };
 }

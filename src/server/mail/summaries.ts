@@ -4,7 +4,8 @@ import { rows } from "@/server/db/client";
 import { withActor } from "@/server/db/actor";
 import { claudeConfigured, summariseWithClaude, type Summariser } from "@/server/claude/summarise";
 import { toLocalDate } from "@/lib/format";
-import { GraphError, graphGet, MailNotConnected } from "./graph";
+import { MailNotConnected } from "./graph";
+import { addressOf, fetchMessageText, messageText, type MessageText } from "./text";
 
 // Claude summaries for logged emails (phase 3.3). For each email logged by the sync and not yet summarised: fetch its
 // text from Outlook, have Claude summarise it, store ONLY the summary, next step and follow-up date (never the text),
@@ -26,17 +27,6 @@ type Pending = {
   deal_id: string | null;
   assignee: string | null;
 };
-
-type GraphText = {
-  body?: { content?: string } | null;
-  uniqueBody?: { content?: string } | null;
-  from?: { emailAddress?: { address?: string } } | null;
-  toRecipients?: { emailAddress?: { address?: string } }[] | null;
-  ccRecipients?: { emailAddress?: { address?: string } }[] | null;
-};
-
-const TEXT_FIELDS = "uniqueBody,body,from,toRecipients,ccRecipients";
-const TEXT_PREFER = { Prefer: 'outlook.body-content-type="text"' };
 
 export type SummaryRun = { attempted: number; summarised: number; tasks: number; refused: number; failed: number; skipped?: string };
 
@@ -67,25 +57,6 @@ async function pending(limit: number, ownerId?: string): Promise<Pending[]> {
     limit ${limit}`);
 }
 
-/** The email's own text from Outlook (the new part only, without the quoted thread, when Outlook provides it). */
-async function fetchText(p: Pending, fetchImpl?: typeof fetch): Promise<GraphText | null> {
-  const box = `/users/${encodeURIComponent(p.mailbox ?? "")}`;
-  if (p.message_id) {
-    try {
-      return await graphGet<GraphText>(p.owner_id, `${box}/messages/${encodeURIComponent(p.message_id)}?$select=${TEXT_FIELDS}`, fetchImpl, TEXT_PREFER);
-    } catch (e) {
-      // Moving a message to another folder gives it a new id: look it up by its internet message id instead.
-      if (!(e instanceof GraphError && e.status === 404)) throw e;
-    }
-  }
-  const filter = encodeURIComponent(`internetMessageId eq '${p.key.replace(/'/g, "''")}'`);
-  const found = await graphGet<{ value?: GraphText[] }>(p.owner_id, `${box}/messages?$filter=${filter}&$select=${TEXT_FIELDS}&$top=1`, fetchImpl, TEXT_PREFER);
-  return found.value?.[0] ?? null;
-}
-
-const clean = (s: string) => s.replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-const addr = (r: { emailAddress?: { address?: string } } | null | undefined) => r?.emailAddress?.address?.toLowerCase() ?? null;
-
 async function mark(key: string, patch: Record<string, unknown>, summary?: string) {
   await withActor({ type: "claude" }, (tx) =>
     tx.execute(sql`
@@ -97,9 +68,9 @@ async function mark(key: string, patch: Record<string, unknown>, summary?: strin
 }
 
 async function summariseOne(p: Pending, summarise: Summariser, today: string, fetchImpl?: typeof fetch): Promise<"done" | "task" | "refused" | "failed"> {
-  let message: GraphText | null;
+  let message: MessageText | null;
   try {
-    message = await fetchText(p, fetchImpl);
+    message = await fetchMessageText(p.owner_id, p.mailbox ?? "", p.message_id, p.key, fetchImpl);
   } catch (e) {
     if (e instanceof MailNotConnected) throw e;
     await mark(p.key, { summary_attempts: p.attempts + 1, summary_error: e instanceof Error ? e.message.slice(0, 200) : "fetch failed" });
@@ -110,13 +81,13 @@ async function summariseOne(p: Pending, summarise: Summariser, today: string, fe
     await mark(p.key, { summary_status: "gone" });
     return "failed";
   }
-  const text = clean(message.uniqueBody?.content || message.body?.content || "");
+  const text = messageText(message);
   try {
     const r = await summarise({
       direction: p.direction,
       sentAt: new Date(p.occurred_at).toISOString(),
-      from: addr(message.from),
-      to: [...(message.toRecipients ?? []), ...(message.ccRecipients ?? [])].map(addr).filter((a): a is string => !!a),
+      from: addressOf(message.from),
+      to: [...(message.toRecipients ?? []), ...(message.ccRecipients ?? [])].map(addressOf).filter((a): a is string => !!a),
       subject: p.subject,
       text: text || "(no text)",
       today,
