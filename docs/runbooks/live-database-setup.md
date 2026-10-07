@@ -129,7 +129,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 10 | `supabase/migrations/20261008000200_mail_sync.sql` | Done 7 Oct 2026 | Outlook mail sync and Inbox triage. Changes no ERP table. |
 | 11 | `supabase/migrations/20261008000300_crm_app_statement_timeout.sql` | Done 8 Oct 2026 | 30-second limit on any CRM query (role setting on crm_app). Changes no ERP table. |
 | 12 | `supabase/migrations/20261009000100_shared_mailboxes.sql` | Done 9 Oct 2026 | Shared mailboxes and website enquiries. Changes no ERP table. |
-| 13 | `supabase/migrations/20261009000200_chase_list.sql` | **To run** | The chase list (Today page). Changes no ERP table. |
+| 13 | `supabase/migrations/20261009000200_chase_list.sql` | Done 9 Oct 2026 | The chase list (Today page). Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
