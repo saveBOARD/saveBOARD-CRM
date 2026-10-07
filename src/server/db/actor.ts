@@ -8,9 +8,9 @@ import { db, type Tx } from "./client";
 export type Actor =
   | { type: "user"; profileId: string }
   | { type: "claude"; profileId?: string | null } // profileId: the user Claude is working for, if any
-  | { type: "system"; reason: "import" | "erp_sync" | "mail_sync" };
+  | { type: "system"; reason: "import" | "erp_sync" | "mail_sync" | "follow_up" };
 
-export type ChangeReason = "manual" | "claude" | "import" | "erp_sync" | "mail_sync";
+export type ChangeReason = "manual" | "claude" | "import" | "erp_sync" | "mail_sync" | "follow_up";
 
 const uuid = z.uuid();
 

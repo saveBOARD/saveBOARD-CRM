@@ -90,6 +90,15 @@ with checks as (
                where key in ('web_enquiry_owners_nz', 'web_enquiry_owners_aus', 'web_enquiry_deal_max_age_days')) = 3
 
   union all
+  select 'chase list: business-day clock, ERP quote mirror without stage moves, rules become tasks (migration 13)',
+         has_function_privilege('crm_app', 'crm.refresh_chase_tasks()', 'execute')
+         and has_function_privilege('crm_app', 'crm.refresh_deal_erp_mirror()', 'execute')
+         and has_function_privilege('crm_app', 'crm.business_deadline(timestamptz, integer)', 'execute')
+         and exists (select 1 from information_schema.columns where table_schema = 'crm' and table_name = 'tasks' and column_name = 'closed_reason')
+         and exists (select 1 from pg_indexes where schemaname = 'crm' and indexname = 'tasks_engine_target_uniq')
+         and exists (select 1 from crm.settings where key = 'first_response_business_days')
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

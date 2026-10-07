@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 ran on 9 Oct 2026.
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 ran on 9 Oct 2026 (16 checks pass). **13 still to run.**
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
@@ -21,7 +21,8 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 10 | `20261008000200_mail_sync.sql` | Outlook mail sync: ignore list (`crm.mail_ignore`), sync progress columns, triage columns, `mail_backfill_days` setting (90) | No |
 | 11 | `20261008000300_crm_app_statement_timeout.sql` | Safety net: any crm_app query is cancelled after 30 seconds | Role setting on `crm_app` only |
 | 12 | `20261009000100_shared_mailboxes.sql` | Shared mailboxes (folder sync positions) and the website enquiry queue; owner pairs and the 7-day deal rule as settings | No |
-| - | `../scripts/verify_after_migration.sql` | 16 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
+| 13 | `20261009000200_chase_list.sql` | The chase list: confirmed rules (business-day first response, 2-year customers), ERP quote mirror without stage moves, rules turned into tasks | No (reads erp_read views) |
+| - | `../scripts/verify_after_migration.sql` | 17 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
 

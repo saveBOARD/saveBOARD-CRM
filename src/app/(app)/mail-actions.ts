@@ -7,6 +7,7 @@ import { requireAdmin, requireUser } from "@/server/auth/session";
 import { deleteMailAccount } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
 import { forgetGraphToken, MAIL_SCOPES, testMailConnection } from "@/server/mail/graph";
+import { refreshChaseList } from "@/server/crm/chase";
 import { processWebEnquiries } from "@/server/mail/enquiries";
 import { runSummaries } from "@/server/mail/summaries";
 import { rereadSharedMailboxes } from "@/server/mail/shared";
@@ -58,6 +59,7 @@ export async function syncOutlookNow(): Promise<ActionState> {
   const e = r && !r.error && admin ? await processWebEnquiries({ budgetMs: 12_000 }) : null;
   // Then a few summaries for this user's newest emails; the 10-minute job does the rest.
   const s = r && !r.error ? await runSummaries({ ownerId: user.id, budgetMs: 12_000, limit: 10 }) : null;
+  await refreshChaseList();
   refresh();
   if (!r) return { ok: false, message: "Outlook isn't connected." };
   const error = r.error ?? r.folders.find((f) => f.error)?.error;
