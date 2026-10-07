@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/server/db/client";
-import { activeProfile, claimProfile } from "./profiles";
+import { activeProfile, claimProfile, profileByOid } from "./profiles";
 
 // Uses its own throwaway profiles so the real users' microsoft_oid stays untouched.
 const run = (q: ReturnType<typeof sql>) => db().execute(q);
@@ -56,5 +56,17 @@ describe("activeProfile", () => {
     expect(await activeProfile(p.id)).not.toBeNull();
     await run(sql`update crm.profiles set active = false where id = ${p.id}`);
     expect(await activeProfile(p.id)).toBeNull();
+  });
+});
+
+describe("profileByOid", () => {
+  it("finds the profile claimed by a Microsoft account, only while active", async () => {
+    await run(sql`insert into crm.profiles (display_name, email, role, active, microsoft_oid)
+                  values ('TEST OidUser', 'test.oid@saveboard.example', 'user', true, 'oid-claimed')`);
+    expect((await profileByOid("oid-claimed"))?.displayName).toBe("TEST OidUser");
+    expect(await profileByOid("oid-unknown")).toBeNull();
+    expect(await profileByOid("")).toBeNull();
+    await run(sql`update crm.profiles set active = false where microsoft_oid = 'oid-claimed'`);
+    expect(await profileByOid("oid-claimed")).toBeNull();
   });
 });

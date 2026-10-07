@@ -34,6 +34,15 @@ export async function claimProfile(emails: string[], oid: string): Promise<Profi
   return toProfile(row);
 }
 
+/** The active profile already claimed by this Microsoft account (after claimProfile succeeded at sign-in). */
+export async function profileByOid(oid: string): Promise<Profile | null> {
+  if (!oid) return null;
+  const rows = (await db().execute(sql`
+    select id, display_name, email, role, microsoft_oid from crm.profiles
+    where microsoft_oid = ${oid} and active`)) as unknown as Row[];
+  return rows[0] ? toProfile(rows[0]) : null;
+}
+
 /** The signed-in user's profile if it is still active (checked on every request, so deactivation is immediate). */
 export async function activeProfile(id: string): Promise<Profile | null> {
   const rows = (await db().execute(sql`
