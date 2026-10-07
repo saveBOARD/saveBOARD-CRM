@@ -49,7 +49,42 @@ export function db() {
 export type Db = ReturnType<typeof db>;
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
+/** A read that hasn't answered by now is stuck (Postgres itself cancels anything over 30 s, migration 11). */
+const STUCK_MS = 35_000;
+
+export class QueryStuck extends Error {
+  constructor() {
+    super("The database didn't answer in time; please try again.");
+    this.name = "QueryStuck";
+  }
+}
+
+/**
+ * A connection can be left waiting for an answer that never comes (seen live on 8 Oct 2026: a query sat for minutes in
+ * "ClientRead" and the page never loaded). Then drop this server's pool, so the next query opens fresh connections,
+ * instead of every later request queueing behind it.
+ */
+function resetPool(reason: string) {
+  const current = globalForDb.crmDb;
+  if (!current) return;
+  globalForDb.crmDb = undefined;
+  console.warn(`[db] connection pool reset: ${reason}`);
+  void current.db.$client.end({ timeout: 1 }).catch(() => {});
+}
+
 /** Run a read query and return its rows, typed by the caller. Pass `tx` to read inside a withActor transaction. */
 export async function rows<T>(query: SQL, tx?: Tx): Promise<T[]> {
-  return (await (tx ?? db()).execute(query)) as unknown as T[];
+  if (tx) return (await tx.execute(query)) as unknown as T[];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stuck = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      resetPool(`a read took over ${STUCK_MS / 1000} s`);
+      reject(new QueryStuck());
+    }, STUCK_MS);
+  });
+  try {
+    return (await Promise.race([db().execute(query), stuck])) as unknown as T[];
+  } finally {
+    clearTimeout(timer);
+  }
 }

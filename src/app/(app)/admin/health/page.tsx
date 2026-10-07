@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { rereadShared } from "@/app/(app)/mail-actions";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireAdmin } from "@/server/auth/session";
+import { within } from "@/lib/within";
 import { getHealth } from "@/server/health";
 import { listMailAccounts } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
@@ -25,13 +26,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default async function HealthPage() {
   await requireAdmin();
-  const [h, mail, sync, sums] = await Promise.all([
-    getHealth(),
-    listMailAccounts().catch(() => []),
-    listSyncStatus().catch(() => []),
-    summaryStatus().catch(() => null),
-  ]);
-  const [shared, enquiries] = await Promise.all([listSharedStatus().catch(() => []), webEnquiryStatus().catch(() => [])]);
+  // One section at a time, each with a time limit: a slow section shows as not loaded instead of freezing the page,
+  // and the log names it ("[slow] health: ...").
+  const S = 8_000;
+  const h = (await within(S, "health: database and ERP counts", getHealth())) ?? { ok: false as const, error: "Timed out after 8 seconds" };
+  const mail = (await within(S, "health: Outlook connections", listMailAccounts())) ?? [];
+  const sync = (await within(S, "health: mail sync status", listSyncStatus())) ?? [];
+  const sums = await within(S, "health: summary counts", summaryStatus());
+  const shared = (await within(S, "health: shared mailboxes", listSharedStatus())) ?? [];
+  const enquiries = (await within(S, "health: website enquiries", webEnquiryStatus())) ?? [];
   const enq = (kind: string, status: string) => enquiries.find((e) => e.kind === kind && e.status === status)?.n ?? 0;
   const cronReady = (process.env.CRON_SECRET ?? "").length >= 16;
   const key = mailKeyStatus();
