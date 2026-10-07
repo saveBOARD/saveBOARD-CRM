@@ -73,7 +73,7 @@ export async function recordMessages(ownerId: string, mailbox: string, folder: F
 
     for (const c of candidates) {
       const hits = c.outside.map((p) => contacts.get(p.address)).filter((h): h is ContactHit => !!h);
-      const meta = JSON.stringify({ mailbox, folder, conversation_id: c.conversationId });
+      const meta = JSON.stringify({ mailbox, folder, conversation_id: c.conversationId, message_id: c.messageId });
       for (const h of hits) {
         activities.push(sql`('email', ${c.direction}::crm.activity_direction, ${c.subject}, ${c.occurredAt}::timestamptz,
                              ${h.id}::uuid, ${h.company_id}::uuid, ${h.deal_id}::uuid, ${ownerId}::uuid, 'graph',
@@ -97,6 +97,7 @@ export async function recordMessages(ownerId: string, mailbox: string, folder: F
         tx,
       );
       logged = r.length;
+      if (logged) await applyDealRules(r.map((x) => x.id), tx);
     }
     if (triage.length) {
       // One triage item per email, even if it reached two mailboxes.
@@ -112,6 +113,33 @@ export async function recordMessages(ownerId: string, mailbox: string, folder: F
     }
     return { logged, triaged };
   });
+}
+
+/**
+ * The brief's automatic pipeline rules for newly logged emails:
+ *   - an email we sent moves a New enquiry deal to Contacted (sent after the deal was created);
+ *   - a customer reply after the quote was sent creates a suggestion (a task) to move the deal to Negotiation.
+ *     A person accepts or dismisses it; the stage never moves to Negotiation on its own.
+ */
+async function applyDealRules(activityIds: string[], tx: Tx) {
+  const ids = sql.join(
+    activityIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
+  await tx.execute(sql`
+    update crm.deals d set stage = 'contacted'
+    where d.stage = 'new_enquiry' and d.deleted_at is null
+      and exists (select 1 from crm.activities a
+                  where a.id in (${ids}) and a.deal_id = d.id and a.direction = 'outbound' and a.occurred_at >= d.created_at)`);
+  await tx.execute(sql`
+    insert into crm.tasks (title, due_on, deal_id, contact_id, assigned_to, source, rule)
+    select distinct on (d.id) 'Customer replied after the quote: move to Negotiation?', (now() at time zone 'Pacific/Auckland')::date,
+           d.id, a.contact_id, d.owner_id, 'follow_up_engine', 'suggest_negotiation'
+    from crm.activities a join crm.deals d on d.id = a.deal_id
+    where a.id in (${ids}) and a.direction = 'inbound' and d.stage = 'quote_sent' and d.deleted_at is null
+      and a.occurred_at > d.stage_changed_at
+    order by d.id, a.occurred_at desc
+    on conflict (deal_id, rule) where status = 'open' and source = 'follow_up_engine' and deal_id is not null do nothing`);
 }
 
 async function saveState(profileId: string, folder: Folder, patch: SQL) {

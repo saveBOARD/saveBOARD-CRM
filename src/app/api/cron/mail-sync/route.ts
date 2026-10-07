@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { cronAuthorised } from "@/server/cron";
 import { syncMail } from "@/server/mail/sync";
 
 // Vercel Cron calls this every 10 minutes (vercel.json) with "Authorization: Bearer <CRON_SECRET>".
@@ -6,16 +6,9 @@ import { syncMail } from "@/server/mail/sync";
 
 export const maxDuration = 60;
 
-function authorised(header: string | null): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || secret.length < 16 || !header) return false;
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const given = Buffer.from(header);
-  return given.length === expected.length && timingSafeEqual(given, expected);
-}
-
 export async function GET(request: Request) {
-  if (!authorised(request.headers.get("authorization"))) {
+  // process.env.CRON_SECRET is checked in cronAuthorised.
+  if (!cronAuthorised(request.headers.get("authorization"))) {
     return Response.json({ error: "Not allowed" }, { status: 401 });
   }
   const results = await syncMail({ budgetMs: 45_000 });

@@ -14,6 +14,9 @@ export type Activity = {
   occurred_at: string; // timestamptz as Postgres text
   origin: string;
   external_url: string | null;
+  /** From Claude's email summary (phase 3.3). */
+  next_step: string | null;
+  follow_up_on: string | null;
   owner: string | null;
   contact_id: string | null;
   contact: string | null;
@@ -36,6 +39,7 @@ export async function listActivities(scope: Scope, limit = 100): Promise<Activit
 
   return rows<Activity>(sql`
     select a.id, a.type, a.direction, a.subject, a.summary, a.occurred_at, a.origin, a.external_url,
+           a.metadata ->> 'next_step' as next_step, a.metadata ->> 'follow_up_on' as follow_up_on,
            p.display_name as owner,
            a.contact_id, nullif(trim(concat_ws(' ', ct.first_name, ct.last_name)), '') as contact,
            a.deal_id, d.title as deal

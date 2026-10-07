@@ -48,7 +48,7 @@ describe("hard rules", () => {
 
   it("every API route checks a signed-in user or the cron secret", () => {
     const routes = files.filter((f) => f.path.startsWith("app/api/") && f.path.endsWith("/route.ts") && !f.path.startsWith("app/api/auth/"));
-    expect(routes.filter((f) => !/requireUser\(|requireAdmin\(|process\.env\.CRON_SECRET/.test(f.text)).map((f) => f.path)).toEqual([]);
+    expect(routes.filter((f) => !/requireUser\(|requireAdmin\(|cronAuthorised\(/.test(f.text)).map((f) => f.path)).toEqual([]);
   });
 
   it("keeps database drivers on the server", () => {

@@ -22,6 +22,7 @@ async function cleanup() {
     await tx.execute(sql`delete from crm.activities where external_id like '<mailtest-%'`);
     await tx.execute(sql`delete from crm.unmatched_emails where external_id like '<mailtest-%'`);
     await tx.execute(sql`delete from crm.mail_ignore where pattern like '%mailtest.test'`);
+    await tx.execute(sql`delete from crm.tasks where deal_id in (select id from crm.deals where title like 'TEST M %')`);
     await tx.execute(sql`delete from crm.deals where title like 'TEST M %'`);
     await tx.execute(sql`delete from crm.contacts where email like '%mailtest.test'`);
     await tx.execute(sql`delete from crm.companies where name like 'TEST M %' or domain like '%mailtest.test'`);
@@ -180,6 +181,32 @@ describe("Outlook mail sync", () => {
     const [r] = await syncMail({ profileId, fetchImpl: g2.impl });
     expect(r.folders[0]).toMatchObject({ seen: 1, logged: 0, triaged: 0 });
     await expect(ignoreSender(user(), "someone@gmail.com", "domain")).rejects.toThrow(/free-mail/);
+  });
+
+  it("pipeline rules: our email moves a New enquiry deal to Contacted; a reply after the quote suggests Negotiation", async () => {
+    await withActor(SYS, (tx) => tx.execute(sql`update crm.deals set stage = 'new_enquiry' where id = ${dealId}`));
+    const now = new Date().toISOString();
+    // Old mail (before the deal existed) moves nothing.
+    await withActor(SYS, (tx) => tx.execute(sql`update crm.mail_sync_state set delta_link = null where profile_id = ${profileId}`));
+    const back = fakeGraph({ sentitems: [[m({ from: a("test.sync@saveboard.nz"), toRecipients: [a("jane@builder.mailtest.test")], sentDateTime: "2020-01-01T00:00:00Z" })]] });
+    await syncMail({ profileId, fetchImpl: back.impl });
+    expect((await rows<{ stage: string }>(sql`select stage from crm.deals where id = ${dealId}`))[0].stage).toBe("new_enquiry");
+
+    const sent = fakeGraph({}, { sentitems: [m({ from: a("test.sync@saveboard.nz"), toRecipients: [a("jane@builder.mailtest.test")], sentDateTime: now })] });
+    await syncMail({ profileId, fetchImpl: sent.impl });
+    expect((await rows<{ stage: string }>(sql`select stage from crm.deals where id = ${dealId}`))[0].stage).toBe("contacted");
+    const [moved] = await rows<{ actor_type: string; changes: { stage: { new: string } } }>(
+      sql`select actor_type, changes from crm.audit_log where table_name = 'deals' and record_id = ${dealId} order by id desc limit 1`,
+    );
+    expect(moved).toMatchObject({ actor_type: "system", changes: { stage: { new: "contacted" } } });
+
+    await withActor(SYS, (tx) => tx.execute(sql`update crm.deals set stage = 'quote_sent' where id = ${dealId}`));
+    const reply = () => fakeGraph({}, { inbox: [m({ from: a("jane@builder.mailtest.test"), receivedDateTime: new Date(Date.now() + 1000).toISOString() })] });
+    await syncMail({ profileId, fetchImpl: reply().impl });
+    await syncMail({ profileId, fetchImpl: reply().impl }); // a second reply: still one suggestion
+    const tasks = await rows<{ title: string; rule: string; status: string }>(sql`select title, rule, status from crm.tasks where deal_id = ${dealId}`);
+    expect(tasks).toEqual([{ title: "Customer replied after the quote: move to Negotiation?", rule: "suggest_negotiation", status: "open" }]);
+    expect((await rows<{ stage: string }>(sql`select stage from crm.deals where id = ${dealId}`))[0].stage).toBe("quote_sent");
   });
 
   it("files waiting emails once the sender is added as a contact some other way", async () => {

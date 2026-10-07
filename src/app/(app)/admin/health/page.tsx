@@ -5,6 +5,8 @@ import { getHealth } from "@/server/health";
 import { listMailAccounts } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
 import { listSyncStatus } from "@/server/mail/sync";
+import { summaryStatus } from "@/server/mail/summaries";
+import { claudeConfigured, SUMMARY_MODEL } from "@/server/claude/summarise";
 import { formatDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "System health" };
@@ -20,7 +22,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default async function HealthPage() {
   await requireAdmin();
-  const [h, mail, sync] = await Promise.all([getHealth(), listMailAccounts().catch(() => []), listSyncStatus().catch(() => [])]);
+  const [h, mail, sync, sums] = await Promise.all([
+    getHealth(),
+    listMailAccounts().catch(() => []),
+    listSyncStatus().catch(() => []),
+    summaryStatus().catch(() => null),
+  ]);
   const cronReady = (process.env.CRON_SECRET ?? "").length >= 16;
   const key = mailKeyStatus();
 
@@ -73,6 +80,18 @@ export default async function HealthPage() {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+      <div className="card mt-4 p-5">
+        <h2 className="mb-3 font-medium">Claude email summaries</h2>
+        {!claudeConfigured() && <p className="mb-2 text-sm text-bad">ANTHROPIC_API_KEY is not set in Vercel: emails are logged without summaries.</p>}
+        {sums && (
+          <p className="text-sm">
+            {sums.done.toLocaleString("en-NZ")} summarised, {sums.waiting.toLocaleString("en-NZ")} waiting
+            {sums.refused > 0 && `, ${sums.refused} declined by Claude`}
+            {sums.failed > 0 && <span className="text-bad">, {sums.failed} failed after 3 tries</span>}. Model: {SUMMARY_MODEL}.
+            {sums.last_error && <span className="block text-xs text-muted">Last problem: {sums.last_error}</span>}
+          </p>
         )}
       </div>
     </div>

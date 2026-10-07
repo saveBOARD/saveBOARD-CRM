@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Calendar, ExternalLink, Mail, MapPin, MessageSquare, Phone, Settings, type LucideIcon } from "lucide-react";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { ACTIVITY_TYPES, type ActivityType } from "@/lib/labels";
 import type { Activity } from "@/server/crm/activities";
 
@@ -48,6 +48,14 @@ export function Timeline({ items, empty }: { items: Activity[]; empty: string })
               </div>
               {a.subject && <div className="text-sm font-medium">{a.subject}</div>}
               {a.summary && <p className="text-sm whitespace-pre-line">{a.summary}</p>}
+              {(a.next_step || a.follow_up_on) && (
+                <p className="text-sm">
+                  <span className="text-muted">Next step: </span>
+                  {a.next_step ?? "Follow up"}
+                  {a.follow_up_on && <span className="text-muted"> (by {formatDate(a.follow_up_on)})</span>}
+                </p>
+              )}
+              {a.origin === "graph" && a.type === "email" && !a.summary && <p className="text-xs text-muted">Summary on its way.</p>}
               {a.external_url && (
                 <a href={a.external_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-link hover:underline">
                   Open in Outlook <ExternalLink className="h-3 w-3" aria-hidden />

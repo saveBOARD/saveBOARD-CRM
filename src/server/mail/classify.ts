@@ -35,6 +35,7 @@ export type Classified =
   | {
       kind: "candidate";
       key: string; // internetMessageId: the same email in two mailboxes has the same key
+      messageId: string; // Graph id in the mailbox it was read from (to fetch the text for the summary)
       direction: "inbound" | "outbound";
       occurredAt: string;
       subject: string | null;
@@ -108,6 +109,7 @@ export function classify(m: GraphMessage, ignore: ReadonlySet<string>, internal:
   return {
     kind: "candidate",
     key,
+    messageId: m.id,
     direction,
     occurredAt: (direction === "inbound" ? m.receivedDateTime : (m.sentDateTime ?? m.receivedDateTime)) ?? new Date().toISOString(),
     subject: m.subject?.trim() || null,

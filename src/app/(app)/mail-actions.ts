@@ -7,6 +7,7 @@ import { requireUser } from "@/server/auth/session";
 import { deleteMailAccount } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
 import { forgetGraphToken, MAIL_SCOPES, testMailConnection } from "@/server/mail/graph";
+import { runSummaries } from "@/server/mail/summaries";
 import { syncMail } from "@/server/mail/sync";
 
 // Connecting Outlook: sign in again with Microsoft, asking for mail access (read + drafts, never send).
@@ -46,7 +47,9 @@ export async function testOutlook(): Promise<ActionState> {
 /** Read new mail now instead of waiting for the 10-minute job. Same code path, this user's mailbox only. */
 export async function syncOutlookNow(): Promise<ActionState> {
   const user = await requireUser();
-  const [r] = await syncMail({ profileId: user.id, budgetMs: 40_000 });
+  const [r] = await syncMail({ profileId: user.id, budgetMs: 35_000 });
+  // Then a few summaries for this user's newest emails; the 10-minute job does the rest.
+  const s = r && !r.error ? await runSummaries({ ownerId: user.id, budgetMs: 15_000, limit: 12 }) : null;
   refresh();
   if (!r) return { ok: false, message: "Outlook isn't connected." };
   const error = r.error ?? r.folders.find((f) => f.error)?.error;
@@ -57,7 +60,9 @@ export async function syncOutlookNow(): Promise<ActionState> {
   const more = r.folders.length < 2 || r.folders.some((f) => !f.finished) ? " Still catching up: it carries on automatically." : "";
   return {
     ok: true,
-    message: `Checked ${seen.toLocaleString("en-NZ")} emails: ${logged} logged on contacts, ${triaged} new for triage.${more}`,
+    message: `Checked ${seen.toLocaleString("en-NZ")} emails: ${logged} logged on contacts, ${triaged} new for triage.${more}${
+      s && s.summarised ? ` Claude summarised ${s.summarised}.` : ""
+    }`,
     savedAt: Date.now(),
   };
 }
