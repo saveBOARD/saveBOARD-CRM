@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { rows } from "@/server/db/client";
 import { deleteMailAccount, getMailAccount, loadRefreshToken, saveMailAccount } from "./accounts";
-import { forgetGraphToken, graphToken, MAIL_SCOPES, MailNotConnected } from "./graph";
+import { forgetGraphToken, graphToken, MAIL_SCOPES, MailNotConnected, testMailConnection } from "./graph";
 
 // Outlook connections as crm_app, with a fake Microsoft token endpoint. Uses a throwaway profile.
 
@@ -72,6 +72,25 @@ describe("Outlook connection", () => {
     expect(await getMailAccount(profileId)).toMatchObject({ status: "needs_reconnect", last_error: "invalid_grant: AADSTS700082: The refresh token has expired." });
     // Until reconnected, nothing is tried.
     await expect(graphToken(profileId, fakeMicrosoft({}))).rejects.toThrow(/not connected/);
+  });
+
+  it("the connection test reads Inbox counts and says which shared mailboxes can be opened", async () => {
+    await saveMailAccount(user(), profileId, "test.mail@saveboard.example", "refresh-S", "Mail.ReadWrite Mail.Read.Shared");
+    forgetGraphToken(profileId);
+    const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json" } });
+    const fake = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("login.microsoftonline.com")) return json({ access_token: "a", expires_in: 3600 });
+      if (url.includes("sales%40saveboard.com.au")) return json({ error: { code: "ErrorAccessDenied" } }, 403);
+      return json({ displayName: "Inbox", totalItemCount: 12, unreadItemCount: 1 });
+    }) as unknown as typeof fetch;
+    const r = await testMailConnection(profileId, fake);
+    expect(r.totalItemCount).toBe(12);
+    expect(r.shared).toEqual([
+      { entity: "NZ", address: "enquiries@saveboard.nz", ok: true, total: 12 },
+      { entity: "AUS", address: "sales@saveboard.com.au", ok: false, problem: "ErrorAccessDenied" },
+    ]);
+    expect(MAIL_SCOPES.split(" ")).toContain("Mail.Read.Shared");
   });
 
   it("reconnecting clears the problem; disconnecting removes the token", async () => {

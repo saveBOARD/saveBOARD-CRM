@@ -5,8 +5,18 @@ import { loadRefreshToken, markNeedsReconnect, storeRotatedToken } from "./accou
 // Microsoft Graph on behalf of a connected user (delegated permissions only). The CRM can read mail and create
 // drafts; it never has permission to send (CLAUDE.md hard rule 4).
 
-/** Scopes requested when a user clicks "Connect Outlook". Never add the send-mail permission. */
-export const MAIL_SCOPES = "openid profile email offline_access User.Read Mail.ReadWrite";
+/**
+ * Scopes requested when a user clicks "Connect Outlook". Mail.ReadWrite: own mailbox, read + drafts.
+ * Mail.Read.Shared: READ the shared enquiries mailboxes the user already has access to in Outlook.
+ * Never add the send-mail permission.
+ */
+export const MAIL_SCOPES = "openid profile email offline_access User.Read Mail.ReadWrite Mail.Read.Shared";
+
+/** The shared mailboxes where website enquiries land (phase 3 plan: "Where forms land"). Read-only. */
+export const SHARED_MAILBOXES = [
+  { entity: "NZ", address: "enquiries@saveboard.nz" },
+  { entity: "AUS", address: "sales@saveboard.com.au" },
+] as const;
 
 export class MailNotConnected extends Error {
   constructor(message = "Outlook is not connected for this user") {
@@ -88,10 +98,24 @@ export async function graphGet<T>(profileId: string, pathOrUrl: string, fetchImp
   return (await res.json()) as T;
 }
 
-/** A harmless read to prove the connection works: the Inbox folder's counts. */
-export async function testMailConnection(profileId: string) {
-  return graphGet<{ displayName: string; totalItemCount: number; unreadItemCount: number }>(
-    profileId,
-    "/me/mailFolders/inbox?$select=displayName,totalItemCount,unreadItemCount",
+type FolderCounts = { displayName: string; totalItemCount: number; unreadItemCount: number };
+const COUNTS = "mailFolders/inbox?$select=displayName,totalItemCount,unreadItemCount";
+
+/**
+ * A harmless read to prove the connection works: the user's Inbox counts, and whether each shared enquiries
+ * mailbox can be opened (needs Mail.Read.Shared plus the user's own access to that mailbox).
+ */
+export async function testMailConnection(profileId: string, fetchImpl: typeof fetch = fetch) {
+  const inbox = await graphGet<FolderCounts>(profileId, `/me/${COUNTS}`, fetchImpl);
+  const shared = await Promise.all(
+    SHARED_MAILBOXES.map(async (m) => {
+      try {
+        const c = await graphGet<FolderCounts>(profileId, `/users/${encodeURIComponent(m.address)}/${COUNTS}`, fetchImpl);
+        return { ...m, ok: true as const, total: c.totalItemCount };
+      } catch (e) {
+        return { ...m, ok: false as const, problem: e instanceof GraphError ? e.code : "not reachable" };
+      }
+    }),
   );
+  return { ...inbox, shared };
 }

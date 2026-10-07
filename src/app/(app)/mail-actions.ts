@@ -28,9 +28,13 @@ export async function testOutlook(): Promise<ActionState> {
   const user = await requireUser();
   try {
     const inbox = await testMailConnection(user.id);
+    const n = (x: number) => x.toLocaleString("en-NZ");
+    const shared = inbox.shared
+      .map((m) => (m.ok ? `${m.address}: can read (${n(m.total)} emails)` : `${m.address}: can't open (${m.problem})`))
+      .join("; ");
     return {
-      ok: true,
-      message: `Connected: your Inbox has ${inbox.totalItemCount.toLocaleString("en-NZ")} emails (${inbox.unreadItemCount.toLocaleString("en-NZ")} unread).`,
+      ok: inbox.shared.every((m) => m.ok),
+      message: `Connected: your Inbox has ${n(inbox.totalItemCount)} emails (${n(inbox.unreadItemCount)} unread). Shared mailboxes: ${shared}.`,
       savedAt: Date.now(),
     };
   } catch (e) {

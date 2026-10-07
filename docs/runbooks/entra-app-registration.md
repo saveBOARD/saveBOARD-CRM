@@ -22,10 +22,11 @@
    - Please note the expiry date: the secret must be renewed before then or sign-in stops working.
 
 4. **Set API permissions.** Go to *API permissions > Add a permission > Microsoft Graph > Delegated permissions* and add:
-   `openid`, `profile`, `email`, `offline_access`, `User.Read`, `Mail.ReadWrite`
+   `openid`, `profile`, `email`, `offline_access`, `User.Read`, `Mail.ReadWrite`, `Mail.Read.Shared` (added 8 Oct 2026)
    Then click **Grant admin consent for saveBOARD**.
    - **Do not add** `Mail.Send`, and **do not add any Application permissions**. The CRM must only act as the signed-in user, and must not be able to send mail.
-   - `Mail.ReadWrite` is needed so the CRM can read the user's own Inbox and Sent Items and create draft emails. It is not used until a later phase.
+   - `Mail.ReadWrite` is needed so the CRM can read the user's own Inbox and Sent Items and create draft emails.
+   - `Mail.Read.Shared` lets the CRM read the shared mailboxes the user can already open (enquiries@saveboard.nz, sales@saveboard.com.au), where website enquiries land. Read only.
 
 5. **Limit it to the CRM users (recommended).** Go to *Identity > Applications > Enterprise applications > saveBOARD CRM*:
    - *Properties*: set **Assignment required?** to **Yes**. Save.
