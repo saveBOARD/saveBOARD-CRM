@@ -1,8 +1,16 @@
 import NextAuth from "next-auth";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import { ZodError } from "zod";
 import { authStatus } from "@/server/auth/config";
 import { graphAddresses } from "@/server/auth/graph";
 import { claimProfile, profileByOid, type Role } from "@/server/auth/profiles";
+
+/** A readable one-line reason: settings problems (Zod) list their messages; database errors give the cause. */
+function describeError(e: unknown): string {
+  if (e instanceof ZodError) return `server setting problem: ${e.issues.map((i) => i.message).join("; ")}`;
+  if (e instanceof Error) return e.cause instanceof Error ? e.cause.message : e.message;
+  return String(e);
+}
 
 function refuse(reason: string) {
   console.warn(`[auth] sign-in refused: ${reason}`);
@@ -55,7 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (await claimProfile(fromGraph, claims.oid)) return true;
         return refuse(`no active CRM user with any of: ${[...new Set([...fromToken, ...fromGraph].filter(Boolean))].join(", ")}`);
       } catch (e) {
-        return refuse(`error while checking the CRM user: ${e instanceof Error ? (e.cause instanceof Error ? e.cause.message : e.message) : e}`);
+        return refuse(`error while checking the CRM user: ${describeError(e)}`);
       }
     },
     async jwt({ token, profile }) {
