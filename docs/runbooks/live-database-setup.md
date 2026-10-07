@@ -127,7 +127,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 8 | `supabase/migrations/20261007000100_hubspot_notes_and_consent.sql` | Done 7 Oct 2026 | HubSpot notes and email consent imports, and the do-not-email list. Changes no ERP table. |
 | 9 | `supabase/migrations/20261008000100_mail_accounts.sql` | Done 7 Oct 2026 | Outlook connections (refresh tokens stored encrypted). Changes no ERP table. |
 | 10 | `supabase/migrations/20261008000200_mail_sync.sql` | Done 7 Oct 2026 | Outlook mail sync and Inbox triage. Changes no ERP table. |
-| 11 | `supabase/migrations/20261008000300_crm_app_statement_timeout.sql` | **To run** | 30-second limit on any CRM query (role setting on crm_app). Changes no ERP table. |
+| 11 | `supabase/migrations/20261008000300_crm_app_statement_timeout.sql` | Done 8 Oct 2026 | 30-second limit on any CRM query (role setting on crm_app). Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
