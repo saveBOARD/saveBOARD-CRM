@@ -55,7 +55,17 @@ export function Timeline({ items, empty }: { items: Activity[]; empty: string })
                   {a.follow_up_on && <span className="text-muted"> (by {formatDate(a.follow_up_on)})</span>}
                 </p>
               )}
-              {a.origin === "graph" && a.type === "email" && !a.summary && <p className="text-xs text-muted">Summary on its way.</p>}
+              {a.origin === "graph" && a.type === "email" && !a.summary && (
+                <p className="text-xs text-muted">
+                  {a.summary_status === "refused"
+                    ? "No summary: Claude declined this email."
+                    : a.summary_status === "gone"
+                      ? "No summary: the email was deleted in Outlook."
+                      : a.summary_error
+                        ? `Summary not ready yet (last try: ${a.summary_error})`
+                        : "Summary on its way."}
+                </p>
+              )}
               {a.external_url && (
                 <a href={a.external_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-link hover:underline">
                   Open in Outlook <ExternalLink className="h-3 w-3" aria-hidden />

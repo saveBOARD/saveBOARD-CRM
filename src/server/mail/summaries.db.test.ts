@@ -157,6 +157,20 @@ describe("Claude email summaries", () => {
     expect(status.refused).toBeGreaterThanOrEqual(1);
   });
 
+  it("does the newest emails first", async () => {
+    await withActor(SYS, async (tx) => {
+      await tx.execute(sql`delete from crm.activities where external_id like '<sumtest-%'`);
+      for (const [key, at] of [["<sumtest-a-old@x>", "2026-07-01T00:00:00Z"], ["<sumtest-z-new@x>", "2026-10-07T00:00:00Z"], ["<sumtest-m-mid@x>", "2026-09-01T00:00:00Z"]]) {
+        await tx.execute(sql`insert into crm.activities (type, direction, subject, occurred_at, contact_id, owner_id, origin, external_id, metadata)
+                             values ('email', 'inbound', ${key}, ${at}, ${janeId}, ${ownerId}, 'graph', ${`${key}|${janeId}`},
+                                     ${JSON.stringify({ mailbox: "sum.owner@saveboard.nz", message_id: "m" })}::jsonb)`);
+      }
+    });
+    const order: string[] = [];
+    await runSummaries({ summarise: async (e) => (order.push(e.subject!), { summary: "s", next_step: null, follow_up_date: null }), fetchImpl: fakeOutlook().impl, limit: 2 });
+    expect(order.sort()).toEqual(["<sumtest-m-mid@x>", "<sumtest-z-new@x>"]);
+  });
+
   it("does nothing without an API key", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     expect(await runSummaries()).toMatchObject({ attempted: 0, skipped: "ANTHROPIC_API_KEY is not set" });

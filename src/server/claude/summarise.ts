@@ -52,7 +52,8 @@ let client: Anthropic | null = null;
 
 /** The real summariser: one Messages API call with a JSON schema for the answer. */
 export const summariseWithClaude: Summariser = async (email) => {
-  client ??= new Anthropic({ maxRetries: 2, timeout: 30_000 });
+  // Short timeouts: a scheduled run has 60 seconds in all, and a failed email is simply retried next run.
+  client ??= new Anthropic({ maxRetries: 1, timeout: 20_000 });
   const text = email.text.length > MAX_EMAIL_CHARS ? `${email.text.slice(0, MAX_EMAIL_CHARS)}\n[email cut here]` : email.text;
   const header = [
     `Today (NZ): ${email.today}`,

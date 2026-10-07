@@ -50,6 +50,7 @@ async function pending(limit: number, ownerId?: string): Promise<Pending[]> {
         and coalesce((a.metadata ->> 'summary_attempts')::int, 0) < ${MAX_ATTEMPTS}
         ${ownerId ? sql`and a.owner_id = ${ownerId}` : sql``}
     )
+    select * from (
     select distinct on (t.key) t.key, t.owner_id, t.direction, t.subject, t.occurred_at,
            t.metadata ->> 'mailbox' as mailbox, t.metadata ->> 'message_id' as message_id,
            coalesce((t.metadata ->> 'summary_attempts')::int, 0) as attempts,
@@ -60,6 +61,9 @@ async function pending(limit: number, ownerId?: string): Promise<Pending[]> {
     left join crm.contacts c on c.id = t.contact_id
     join crm.mail_accounts m on m.profile_id = t.owner_id and m.status = 'connected'
     order by t.key, t.deal_id nulls last, t.occurred_at desc
+    ) one_per_email
+    -- Newest first: what people are looking at today gets its summary first; the back-fill follows.
+    order by occurred_at desc
     limit ${limit}`);
 }
 
