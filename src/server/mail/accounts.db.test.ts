@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { rows } from "@/server/db/client";
 import { deleteMailAccount, getMailAccount, loadRefreshToken, saveMailAccount } from "./accounts";
-import { forgetGraphToken, graphToken, MAIL_SCOPES, MailNotConnected, testMailConnection } from "./graph";
+import { forgetGraphToken, graphGet, graphToken, MAIL_SCOPES, MailNotConnected, testMailConnection } from "./graph";
 
 // Outlook connections as crm_app, with a fake Microsoft token endpoint. Uses a throwaway profile.
 
@@ -91,6 +91,22 @@ describe("Outlook connection", () => {
       { entity: "AUS", address: "sales@saveboard.com.au", ok: false, problem: "ErrorAccessDenied" },
     ]);
     expect(MAIL_SCOPES.split(" ")).toContain("Mail.Read.Shared");
+  });
+
+  it("waits and retries once when Microsoft throttles (ApplicationThrottled)", async () => {
+    let graphCalls = 0;
+    const json = (b: unknown, status = 200, headers: Record<string, string> = {}) =>
+      new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json", ...headers } });
+    const fake = vi.fn(async (input: string | URL | Request) => {
+      if (String(input).includes("login.microsoftonline.com")) return json({ access_token: "a", expires_in: 3600 });
+      graphCalls++;
+      return graphCalls === 1
+        ? json({ error: { code: "ApplicationThrottled" } }, 429, { "Retry-After": "0" })
+        : json({ displayName: "Inbox", totalItemCount: 3, unreadItemCount: 0 });
+    }) as unknown as typeof fetch;
+    const r = await graphGet<{ totalItemCount: number }>(profileId, "/me/mailFolders/inbox", fake);
+    expect(r.totalItemCount).toBe(3);
+    expect(graphCalls).toBe(2);
   });
 
   it("reconnecting clears the problem; disconnecting removes the token", async () => {

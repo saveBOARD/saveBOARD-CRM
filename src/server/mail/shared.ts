@@ -39,14 +39,14 @@ const SYSTEM_FOLDERS = ["drafts", "sentitems", "deleteditems", "junkemail", "out
  */
 export async function listMailFolders(readerId: string, mailbox: string, fetchImpl?: typeof fetch): Promise<{ id: string; path: string }[]> {
   const box = `/users/${encodeURIComponent(mailbox)}`;
-  const [top, inbox, ...system] = await Promise.all([
-    graphGet<{ value?: Folder[] }>(readerId, `${box}/mailFolders?$select=id,displayName,childFolderCount&$top=100`, fetchImpl),
-    graphGet<Folder>(readerId, `${box}/mailFolders/inbox?$select=id,displayName,childFolderCount`, fetchImpl),
-    ...SYSTEM_FOLDERS.map((name) =>
-      graphGet<Folder>(readerId, `${box}/mailFolders/${name}?$select=id`, fetchImpl).catch(() => null),
-    ),
-  ]);
-  const skip = new Set(system.filter((f): f is Folder => !!f).map((f) => f.id));
+  // One request at a time: Outlook throttles more than a few concurrent requests per mailbox (ApplicationThrottled).
+  const top = await graphGet<{ value?: Folder[] }>(readerId, `${box}/mailFolders?$select=id,displayName,childFolderCount&$top=100`, fetchImpl);
+  const inbox = await graphGet<Folder>(readerId, `${box}/mailFolders/inbox?$select=id,displayName,childFolderCount`, fetchImpl);
+  const skip = new Set<string>();
+  for (const name of SYSTEM_FOLDERS) {
+    const f = await graphGet<Folder>(readerId, `${box}/mailFolders/${name}?$select=id`, fetchImpl).catch(() => null);
+    if (f) skip.add(f.id);
+  }
   const roots = [inbox, ...(top.value ?? []).filter((f) => f.id !== inbox.id && !skip.has(f.id))];
   const out: { id: string; path: string }[] = [];
   async function walk(f: Folder, path: string, depth: number) {

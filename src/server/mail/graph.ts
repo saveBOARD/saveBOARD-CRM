@@ -88,7 +88,14 @@ export async function graphGet<T>(profileId: string, pathOrUrl: string, fetchImp
   const url = pathOrUrl.startsWith("/") ? `${GRAPH}${pathOrUrl}` : pathOrUrl;
   if (!url.startsWith(`${GRAPH}/`)) throw new Error("Refusing to send the Microsoft token outside graph.microsoft.com");
   const token = await graphToken(profileId, fetchImpl);
-  const res = await fetchImpl(url, { headers: { ...headers, Authorization: `Bearer ${token}` }, cache: "no-store" });
+  let res = await fetchImpl(url, { headers: { ...headers, Authorization: `Bearer ${token}` }, cache: "no-store" });
+  // Throttled (429, e.g. "ApplicationThrottled": Outlook allows only a few requests at a time per mailbox): wait as
+  // Microsoft asks (at most 10 seconds) and try once more.
+  if (res.status === 429 || res.status === 503) {
+    const wait = Math.min(Number(res.headers.get("retry-after")) || 2, 10);
+    await new Promise((r) => setTimeout(r, wait * 1000));
+    res = await fetchImpl(url, { headers: { ...headers, Authorization: `Bearer ${token}` }, cache: "no-store" });
+  }
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: { code?: string; message?: string } };
     const code = body.error?.code ?? String(res.status);

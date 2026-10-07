@@ -12,7 +12,8 @@ import { addressOf, fetchMessageText, messageText, type MessageText } from "./te
 // and turn a follow-up date into a task. One email logged on two contacts is summarised once.
 
 const MAX_ATTEMPTS = 3;
-const CONCURRENCY = 4;
+// Below Outlook's limit of 4 concurrent requests per mailbox, leaving room for the sync.
+const CONCURRENCY = 2;
 
 type Pending = {
   key: string;
