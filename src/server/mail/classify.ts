@@ -22,8 +22,16 @@ export type GraphMessage = {
   conversationId?: string | null;
   isDraft?: boolean | null;
   inferenceClassification?: "focused" | "other" | null;
+  /** Shared mailboxes only: Outlook's ~255-character preview, used to recognise forms and orders. Never stored. */
+  bodyPreview?: string | null;
   "@removed"?: unknown;
 };
+
+/**
+ * The shared mailboxes also ask for Outlook's short preview, only to recognise website forms and shop orders by their
+ * opening line (their subjects vary). The preview is never stored or sent anywhere.
+ */
+export const SHARED_PREVIEW_FIELD = "bodyPreview";
 
 export const MESSAGE_FIELDS =
   "internetMessageId,subject,from,sender,toRecipients,ccRecipients,receivedDateTime,sentDateTime,webLink,conversationId,isDraft,inferenceClassification";
@@ -140,16 +148,21 @@ export function splitName(name: string | null, address: string): { first: string
 }
 
 /**
- * Website form notifications, as sent by the website's form tool (examples from Paul, 8 Oct 2026):
- * "A site visitor just submitted your form saveBOARD Enquiries Form 2 on Save Board NZ" / "...Form 5 on Save Board AU".
+ * Website form notifications from the website's form tool. Their email opens with "A site visitor just submitted your
+ * form saveBOARD Enquiries Form 2 on Save Board NZ" (or "...Form 5 on Save Board AU"); examples from Paul, 7 Oct 2026.
+ * Recognised from the subject or the preview. Replies and forwards are ordinary email.
  */
 const REPLY = /^\s*(re|fw|fwd)\s*:/i;
+const FORM = /submitted (your|a) form|form \d+ on save ?board/i;
+const ORDER = /new order received|\bnew order\b.*#\s*\d+/i;
 
-export function isWebsiteForm(subject: string | null | undefined): boolean {
-  return !!subject && !REPLY.test(subject) && /submitted (your|a) form|form \d+ on save ?board/i.test(subject);
+export function isWebsiteForm(subject: string | null | undefined, preview?: string | null): boolean {
+  if (subject && REPLY.test(subject)) return false;
+  return FORM.test(subject ?? "") || FORM.test(preview?.slice(0, 300) ?? "");
 }
 
-/** Online shop order notifications: "New Order Received! Order #1234". Replies and forwards are ordinary email. */
-export function isShopOrder(subject: string | null | undefined): boolean {
-  return !!subject && !REPLY.test(subject) && /new order received!?.*order\s*#/i.test(subject);
+/** Online shop order notifications: "New Order Received!" at the top, "Order #10022". */
+export function isShopOrder(subject: string | null | undefined, preview?: string | null): boolean {
+  if (subject && REPLY.test(subject)) return false;
+  return ORDER.test(subject ?? "") || ORDER.test(preview?.slice(0, 300) ?? "");
 }

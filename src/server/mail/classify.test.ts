@@ -98,4 +98,13 @@ describe("shared mailbox notifications", () => {
     expect(isWebsiteForm("FW: A site visitor just submitted your form Form 5 on Save Board AU")).toBe(false);
     expect(isShopOrder("Order received")).toBe(false);
   });
+
+  it("recognises them from Outlook's preview when the subject says something else", () => {
+    const formPreview = "A site visitor just submitted your form saveBOARD Enquiries Form 2 on Save Board NZ Submission summary: Full Name:";
+    expect(isWebsiteForm("New submission", formPreview)).toBe(true);
+    expect(isWebsiteForm("New submission", "Hi Paul, thanks for the samples")).toBe(false);
+    expect(isWebsiteForm("RE: New submission", formPreview)).toBe(false); // a reply quoting the form is ordinary email
+    expect(isShopOrder("[Save Board] Order 10022", "New Order Received! An order has been placed on your site. Order #10022")).toBe(true);
+    expect(isShopOrder("Your quote", "We received your order request")).toBe(false);
+  });
 });

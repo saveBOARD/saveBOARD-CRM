@@ -2,7 +2,7 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 import { rows } from "@/server/db/client";
 import { withActor, type Actor } from "@/server/db/actor";
-import { isShopOrder, isWebsiteForm, type GraphMessage } from "./classify";
+import { isShopOrder, isWebsiteForm, SHARED_PREVIEW_FIELD, type GraphMessage } from "./classify";
 import { GraphError, graphGet, SHARED_MAILBOXES } from "./graph";
 import { deltaStartUrl, followDelta, recordMessages, type DeltaResult, type DeltaState } from "./sync";
 
@@ -75,7 +75,7 @@ async function queueNotifications(readerId: string, mailbox: string, entity: "NZ
   const rest: GraphMessage[] = [];
   for (const m of messages) {
     const key = m.internetMessageId?.trim();
-    const kind = isWebsiteForm(m.subject) ? "form" : isShopOrder(m.subject) ? "shop_order" : null;
+    const kind = isWebsiteForm(m.subject, m.bodyPreview) ? "form" : isShopOrder(m.subject, m.bodyPreview) ? "shop_order" : null;
     if (!kind || !key || m["@removed"] || m.isDraft) {
       rest.push(m);
       continue;
@@ -85,15 +85,24 @@ async function queueNotifications(readerId: string, mailbox: string, entity: "NZ
   }
   let queued = 0;
   if (queue.length) {
-    const r = await withActor(SYNC, (tx) =>
-      rows<{ id: string; inserted: boolean }>(
+    const r = await withActor(SYNC, async (tx) => {
+      const out = await rows<{ id: string; inserted: boolean; external_id: string }>(
         sql`insert into crm.web_enquiries (kind, mailbox, entity, external_id, message_id, reader_id, subject, received_at, status)
             values ${sql.join(queue, sql`, `)}
             on conflict (external_id) do update set message_id = excluded.message_id   -- moved to another folder: new id
-            returning (xmax = 0) as inserted, id`,
+            returning (xmax = 0) as inserted, id, external_id`,
         tx,
-      ),
-    );
+      );
+      // A form or order read before it was recognised as one (e.g. before a re-read) may sit in triage or on a
+      // timeline as plain email: it is logged once, as the enquiry or order, so remove those copies.
+      const keys = sql.join(
+        out.map((x) => sql`${x.external_id}`),
+        sql`, `,
+      );
+      await tx.execute(sql`update crm.unmatched_emails set status = 'ignored' where status = 'pending' and external_id in (${keys})`);
+      await tx.execute(sql`delete from crm.activities where origin = 'graph' and split_part(external_id, '|', 1) in (${keys})`);
+      return out;
+    });
     queued = r.filter((x) => x.inserted).length;
   }
   return { queued, rest };
@@ -160,7 +169,10 @@ export async function syncSharedMailboxes(opts: {
       const r = await followDelta({
         readerId: reader.id,
         state,
-        startUrl: () => deltaStartUrl(`/users/${encodeURIComponent(mailbox)}/mailFolders/${encodeURIComponent(f.id)}`, opts.backfillDays),
+        startUrl: () =>
+          deltaStartUrl(`/users/${encodeURIComponent(mailbox)}/mailFolders/${encodeURIComponent(f.id)}`, opts.backfillDays, undefined, [
+            SHARED_PREVIEW_FIELD,
+          ]),
         save: (patch) => saveFolder(mailbox, f.id, patch),
         onPage: async (messages) => {
           const { queued, rest } = await queueNotifications(reader.id, mailbox, entity, messages);

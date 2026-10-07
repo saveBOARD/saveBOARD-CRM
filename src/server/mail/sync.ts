@@ -206,9 +206,9 @@ export async function followDelta(opts: {
 }
 
 /** The start of a folder's change tracking: header fields only, received in the last `days` days. */
-export function deltaStartUrl(folderPath: string, days: number, now: Date = new Date()): string {
+export function deltaStartUrl(folderPath: string, days: number, now: Date = new Date(), extraFields: string[] = []): string {
   const since = new Date(now.getTime() - days * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
-  const q = new URLSearchParams({ $select: MESSAGE_FIELDS, $filter: `receivedDateTime ge ${since}` });
+  const q = new URLSearchParams({ $select: [MESSAGE_FIELDS, ...extraFields].join(","), $filter: `receivedDateTime ge ${since}` });
   return `https://graph.microsoft.com/v1.0${folderPath}/messages/delta?${q}`;
 }
 

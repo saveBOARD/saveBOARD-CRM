@@ -44,6 +44,13 @@ describe("hard rules", () => {
     expect(sync.length).toBe(1);
     const fields = /MESSAGE_FIELDS\s*=\s*"([^"]+)"/.exec(sync[0].text)?.[1] ?? "";
     expect(fields.split(",").filter((f) => /body|uniqueBody|attachments|bodyPreview/i.test(f))).toEqual([]);
+    // The shared mailboxes may add only Outlook's short preview (to recognise forms and orders), never the body.
+    const extra = /SHARED_PREVIEW_FIELD\s*=\s*"([^"]+)"/.exec(sync[0].text)?.[1];
+    expect(extra).toBe("bodyPreview");
+  });
+
+  it("never stores the shared mailboxes' preview text", () => {
+    expect(offenders((f) => f.path.startsWith("server/") && /bodyPreview/.test(f.text) && /insert into|update crm\./i.test(f.text) && /\$\{[^}]*bodyPreview/.test(f.text))).toEqual([]);
   });
 
   it("every API route checks a signed-in user or the cron secret", () => {

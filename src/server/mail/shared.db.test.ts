@@ -183,7 +183,14 @@ describe("shared mailboxes and website forms", () => {
         "enq-inbox": [m("n1", "f3", { subject: FORM_NZ, from: a("noreply@forms.example"), receivedDateTime: days(30) })],
       },
     );
+    // A form read earlier as plain email (before it was recognised) sits in triage: recognising it clears that copy.
+    await withActor(SYS, (tx) =>
+      tx.execute(sql`insert into crm.unmatched_emails (owner_id, external_id, from_address, subject, received_at, status)
+                     values (${readerId}, '<enqtest-f2@x>', 'visitor@b.enqtest.test', 'Form', now(), 'pending')`),
+    );
     const results = await syncSharedMailboxes({ deadline: Date.now() + 30_000, ignore: new Set(), backfillDays: 90, fetchImpl: g.impl, onlyReader: readerId });
+    const [earlier] = await rows<{ status: string }>(sql`select status from crm.unmatched_emails where external_id = '<enqtest-f2@x>'`);
+    expect(earlier.status).toBe("ignored");
 
     expect(results.map((r) => [r.mailbox, r.reader, r.error ?? null, r.folders.map((f) => f.path)])).toEqual([
       [ENQ, "TEST Enq Reader", null, ["Inbox"]],
