@@ -125,7 +125,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 6 | `supabase/migrations/20261005000100_suggest_matches_definer.sql` | Done 7 Oct 2026 | Lets the CRM's "Suggest matches" button work. Changes no ERP table. |
 | 7 | `supabase/migrations/20261006000100_import_hubspot_contacts.sql` | Done 7 Oct 2026 | The in-app HubSpot contacts import (Imports screen). Changes no ERP table. |
 | 8 | `supabase/migrations/20261007000100_hubspot_notes_and_consent.sql` | Done 7 Oct 2026 | HubSpot notes and email consent imports, and the do-not-email list. Changes no ERP table. |
-| 9 | `supabase/migrations/20261008000100_mail_accounts.sql` | **To run** | Outlook connections (refresh tokens stored encrypted). Changes no ERP table. |
+| 9 | `supabase/migrations/20261008000100_mail_accounts.sql` | Done 7 Oct 2026 | Outlook connections (refresh tokens stored encrypted). Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
