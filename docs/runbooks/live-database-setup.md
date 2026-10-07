@@ -126,7 +126,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 7 | `supabase/migrations/20261006000100_import_hubspot_contacts.sql` | Done 7 Oct 2026 | The in-app HubSpot contacts import (Imports screen). Changes no ERP table. |
 | 8 | `supabase/migrations/20261007000100_hubspot_notes_and_consent.sql` | Done 7 Oct 2026 | HubSpot notes and email consent imports, and the do-not-email list. Changes no ERP table. |
 | 9 | `supabase/migrations/20261008000100_mail_accounts.sql` | Done 7 Oct 2026 | Outlook connections (refresh tokens stored encrypted). Changes no ERP table. |
-| 10 | `supabase/migrations/20261008000200_mail_sync.sql` | **To run** | Outlook mail sync and Inbox triage. Changes no ERP table. |
+| 10 | `supabase/migrations/20261008000200_mail_sync.sql` | Done 7 Oct 2026 | Outlook mail sync and Inbox triage. Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
