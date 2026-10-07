@@ -73,7 +73,10 @@ const FORM_AU = "A site visitor just submitted your form Form 5 on Save Board AU
 const FORM_NZ = "A site visitor just submitted your form saveBOARD Enquiries Form 2 on Save Board NZ";
 
 /** Fake Outlook for the two shared mailboxes: folder tree, change tracking per folder, message text. */
-function fakeOutlook(folders: Record<string, { id: string; name: string; kids?: string[] }[]>, messages: Record<string, GraphMessage[]>) {
+function fakeOutlook(
+  folders: Record<string, { id: string; name: string; kids?: string[]; system?: string }[]>,
+  messages: Record<string, GraphMessage[]>,
+) {
   const calls: string[] = [];
   const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json" } });
   const all = Object.values(messages).flat();
@@ -84,9 +87,16 @@ function fakeOutlook(folders: Record<string, { id: string; name: string; kids?: 
     const box = /\/users\/([^/]+)\//.exec(url)?.[1] ?? "";
     const tree = folders[box];
     if (!tree) return json({ error: { code: "ErrorAccessDenied" } }, 403);
-    if (url.includes("/mailFolders/inbox?")) {
-      const inbox = tree[0];
-      return json({ id: inbox.id, displayName: "Inbox", childFolderCount: inbox.kids?.length ?? 0 });
+    const asFolder = (f: { id: string; name: string; kids?: string[] }) => ({ id: f.id, displayName: f.name, childFolderCount: f.kids?.length ?? 0 });
+    if (url.includes("/mailFolders/inbox?")) return json(asFolder(tree[0]));
+    const wellKnown = /mailFolders\/(\w+)\?\$select=id$/.exec(url)?.[1];
+    if (wellKnown) {
+      const f = tree.find((x) => x.system === wellKnown);
+      return f ? json({ id: f.id }) : json({ error: { code: "ErrorFolderNotFound" } }, 404);
+    }
+    if (url.includes("/mailFolders?")) {
+      const kidIds = new Set(tree.flatMap((f) => f.kids ?? []));
+      return json({ value: tree.filter((f) => !kidIds.has(f.id)).map(asFolder) });
     }
     const kids = /mailFolders\/([^/?]+)\/childFolders/.exec(url);
     if (kids) {
@@ -150,12 +160,16 @@ describe("shared mailboxes and website forms", () => {
     const g = fakeOutlook(
       {
         [SALES]: [
-          { id: "sales-inbox", name: "Inbox", kids: ["sales-enq"] },
+          // As in Paul's sales@: "Enquiries" sits beside the Inbox; a subfolder under the Inbox too; Sent Items skipped.
+          { id: "sales-inbox", name: "Inbox", kids: ["sales-2026"] },
+          { id: "sales-2026", name: "2026" },
           { id: "sales-enq", name: "Enquiries" },
+          { id: "sales-sent", name: "Sent Items", system: "sentitems" },
         ],
         [ENQ]: [{ id: "enq-inbox", name: "Inbox" }],
       },
       {
+        "sales-sent": [m("sx", "never", { subject: FORM_AU, from: a("noreply@forms.example") })],
         "sales-inbox": [
           formAu,
           m("s2", "f2", { subject: FORM_AU, from: a("noreply@forms.example") }),
@@ -173,7 +187,7 @@ describe("shared mailboxes and website forms", () => {
 
     expect(results.map((r) => [r.mailbox, r.reader, r.error ?? null, r.folders.map((f) => f.path)])).toEqual([
       [ENQ, "TEST Enq Reader", null, ["Inbox"]],
-      [SALES, "TEST Enq Reader", null, ["Inbox", "Inbox/Enquiries"]],
+      [SALES, "TEST Enq Reader", null, ["Inbox", "Inbox/2026", "Enquiries"]],
     ]);
     const queued = await rows<{ kind: string; entity: string; status: string; mailbox: string; message_id: string }>(
       sql`select kind, entity, status, mailbox, message_id from crm.web_enquiries where external_id like '<enqtest-%' order by external_id`,
@@ -197,8 +211,9 @@ describe("shared mailboxes and website forms", () => {
 
     const status = await listSharedStatus();
     expect(status.filter((s) => s.mailbox === SALES).map((s) => [s.folder_path, s.catching_up, s.last_error])).toEqual([
+      ["Enquiries", false, null],
       ["Inbox", false, null],
-      ["Inbox/Enquiries", false, null],
+      ["Inbox/2026", false, null],
     ]);
   });
 

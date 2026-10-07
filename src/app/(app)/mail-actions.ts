@@ -3,12 +3,13 @@
 import { refresh } from "next/cache";
 import { signIn } from "@/auth";
 import type { ActionState } from "@/lib/action-state";
-import { requireUser } from "@/server/auth/session";
+import { requireAdmin, requireUser } from "@/server/auth/session";
 import { deleteMailAccount } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
 import { forgetGraphToken, MAIL_SCOPES, testMailConnection } from "@/server/mail/graph";
 import { processWebEnquiries } from "@/server/mail/enquiries";
 import { runSummaries } from "@/server/mail/summaries";
+import { rereadSharedMailboxes } from "@/server/mail/shared";
 import { syncMail } from "@/server/mail/sync";
 
 // Connecting Outlook: sign in again with Microsoft, asking for mail access (read + drafts, never send).
@@ -79,4 +80,11 @@ export async function syncOutlookNow(): Promise<ActionState> {
   if (e && e.attempted) parts.push(`Website forms and orders: ${e.created} new contacts, ${e.deals} new enquiry deals, ${e.orders} shop orders logged, ${e.skipped} skipped${e.failed ? `, ${e.failed} failed` : ""}.`);
   if (s && s.summarised) parts.push(`Claude summarised ${s.summarised}.`);
   return { ok: true, message: parts.join(" "), savedAt: Date.now() };
+}
+
+/** Admins: read the shared mailboxes' last 90 days again (after a change to how forms or orders are recognised). */
+export async function rereadShared(): Promise<void> {
+  const user = await requireAdmin();
+  await rereadSharedMailboxes({ type: "user", profileId: user.id });
+  refresh();
 }

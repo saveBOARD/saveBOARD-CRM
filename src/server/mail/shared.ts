@@ -6,8 +6,8 @@ import { isShopOrder, isWebsiteForm, type GraphMessage } from "./classify";
 import { GraphError, graphGet, SHARED_MAILBOXES } from "./graph";
 import { deltaStartUrl, followDelta, recordMessages, type DeltaResult, type DeltaState } from "./sync";
 
-// Shared mailboxes (phase 3.4): enquiries@saveboard.nz (NZ) and sales@saveboard.com.au (AUS). The CRM reads the
-// Inbox and every folder under it, because staff file messages into subfolders once they're handled. It reads with
+// Shared mailboxes (phase 3.4): enquiries@saveboard.nz (NZ) and sales@saveboard.com.au (AUS). The CRM reads every
+// mail folder except the system ones (Sent, Drafts, Deleted, Junk...), because staff file handled messages. It reads with
 // a connected user's delegated access (Mail.Read.Shared) and never changes these mailboxes.
 //   - Website form and shop order notifications are queued in crm.web_enquiries (see enquiries.ts).
 //   - Everything else is handled like the users' own mail: known contacts logged, unknown senders to triage.
@@ -29,10 +29,25 @@ async function candidateReaders(): Promise<{ id: string; name: string }[]> {
     order by (p.role = 'admin') desc, p.display_name`);
 }
 
-/** The Inbox and the folders under it (depth-first), as "Inbox/Enquiries/2026". */
-export async function listInboxFolders(readerId: string, mailbox: string, fetchImpl?: typeof fetch): Promise<{ id: string; path: string }[]> {
+/** Outlook's system folders, by their well-known names (language-independent). Never read. */
+const SYSTEM_FOLDERS = ["drafts", "sentitems", "deleteditems", "junkemail", "outbox", "conversationhistory", "syncissues"];
+
+/**
+ * Every mail folder people file into, depth-first, Inbox first, as "Inbox", "Inbox/2026", "Enquiries": all top-level
+ * folders and their subfolders except the system ones (staff file handled messages into folders, which can sit
+ * under the Inbox or beside it).
+ */
+export async function listMailFolders(readerId: string, mailbox: string, fetchImpl?: typeof fetch): Promise<{ id: string; path: string }[]> {
   const box = `/users/${encodeURIComponent(mailbox)}`;
-  const inbox = await graphGet<Folder>(readerId, `${box}/mailFolders/inbox?$select=id,displayName,childFolderCount`, fetchImpl);
+  const [top, inbox, ...system] = await Promise.all([
+    graphGet<{ value?: Folder[] }>(readerId, `${box}/mailFolders?$select=id,displayName,childFolderCount&$top=100`, fetchImpl),
+    graphGet<Folder>(readerId, `${box}/mailFolders/inbox?$select=id,displayName,childFolderCount`, fetchImpl),
+    ...SYSTEM_FOLDERS.map((name) =>
+      graphGet<Folder>(readerId, `${box}/mailFolders/${name}?$select=id`, fetchImpl).catch(() => null),
+    ),
+  ]);
+  const skip = new Set(system.filter((f): f is Folder => !!f).map((f) => f.id));
+  const roots = [inbox, ...(top.value ?? []).filter((f) => f.id !== inbox.id && !skip.has(f.id))];
   const out: { id: string; path: string }[] = [];
   async function walk(f: Folder, path: string, depth: number) {
     out.push({ id: f.id, path });
@@ -47,7 +62,10 @@ export async function listInboxFolders(readerId: string, mailbox: string, fetchI
       await walk(k, `${path}/${k.displayName}`, depth + 1);
     }
   }
-  await walk(inbox, "Inbox", 0);
+  for (const r of roots) {
+    if (out.length >= MAX_FOLDERS) break;
+    await walk(r, r.id === inbox.id ? "Inbox" : r.displayName, 0);
+  }
   return out;
 }
 
@@ -112,7 +130,7 @@ export async function syncSharedMailboxes(opts: {
     let reader: { id: string; name: string } | null = null;
     for (const r of ordered) {
       try {
-        folders = await listInboxFolders(r.id, mailbox, opts.fetchImpl);
+        folders = await listMailFolders(r.id, mailbox, opts.fetchImpl);
         reader = r;
         break;
       } catch (e) {
@@ -175,4 +193,12 @@ export async function listSharedStatus(): Promise<SharedFolderStatus[]> {
            (f.next_link is not null or f.delta_link is null) as catching_up
     from crm.shared_mail_folders f left join crm.profiles p on p.id = f.reader_id
     order by f.mailbox, f.folder_path`);
+}
+
+/**
+ * Start the shared mailboxes' change tracking again from the 90-day read-back (admin, health page). Used after the
+ * rules for recognising forms or orders change. Safe: every email, form and order is logged at most once.
+ */
+export async function rereadSharedMailboxes(actor: Actor & { type: "user" }): Promise<void> {
+  await withActor(actor, (tx) => tx.execute(sql`update crm.shared_mail_folders set delta_link = null, next_link = null`));
 }

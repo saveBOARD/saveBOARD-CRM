@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { rereadShared } from "@/app/(app)/mail-actions";
 import { PageHeader } from "@/components/shell/page-header";
 import { requireAdmin } from "@/server/auth/session";
 import { getHealth } from "@/server/health";
@@ -108,6 +109,14 @@ export default async function HealthPage() {
           {enq("form", "failed") > 0 && <span className="text-bad">, {enq("form", "failed")} failed</span>}. Shop orders: {enq("shop_order", "done")} logged, {enq("shop_order", "pending")} waiting
           {enq("shop_order", "failed") > 0 && <span className="text-bad">, {enq("shop_order", "failed")} failed</span>}.
         </p>
+        {shared.length > 0 && (
+          <form action={rereadShared} className="mt-3 flex flex-wrap items-center gap-3">
+            <button type="submit" className="btn-secondary">
+              Re-read shared mailboxes
+            </button>
+            <span className="text-xs text-muted">Reads the last 90 days again, e.g. after a change to how forms are recognised. Nothing is logged twice.</span>
+          </form>
+        )}
       </div>
       <div className="card mt-4 p-5">
         <h2 className="mb-3 font-medium">Claude email summaries</h2>
