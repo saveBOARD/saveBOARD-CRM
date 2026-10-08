@@ -15,6 +15,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { DigestTestButton } from "@/components/admin/digest-test-button";
 import { digestConfigured } from "@/server/digest/send";
 import { lastDigestDate } from "@/server/digest/run";
+import { lastRetentionRun } from "@/server/retention";
 
 export const metadata: Metadata = { title: "System health" };
 
@@ -40,6 +41,7 @@ export default async function HealthPage() {
   const enquiries = (await within(S, "health: website enquiries", webEnquiryStatus())) ?? [];
   const digestLast = await within(S, "health: digest", lastDigestDate());
   const digest = digestConfigured();
+  const retention = await within(S, "health: retention", lastRetentionRun());
   const enq = (kind: string, status: string) => enquiries.find((e) => e.kind === kind && e.status === status)?.n ?? 0;
   const cronReady = (process.env.CRON_SECRET ?? "").length >= 16;
   const key = mailKeyStatus();
@@ -139,6 +141,21 @@ export default async function HealthPage() {
           )}
         </p>
         {digest.ok && <DigestTestButton />}
+      </div>
+      <div className="card mt-4 p-5">
+        <h2 className="mb-3 font-medium">Retention</h2>
+        <p className="text-sm">
+          Every night, captured emails, website forms, shop orders, call notes, Inbox triage items and old chase drafts older than{" "}
+          {retention?.months ?? 24} months are deleted. Notes people typed and HubSpot history are kept.{" "}
+          {retention ? (
+            <span className="text-muted">
+              Last run {formatDateTime(retention.at)}: {Object.values(retention.deleted).reduce((a, b) => a + b, 0).toLocaleString("en-NZ")} removed
+              {retention.finished ? "" : " (more next night)"}.
+            </span>
+          ) : (
+            <span className="text-muted">Not run yet.</span>
+          )}
+        </p>
       </div>
       <div className="card mt-4 p-5">
         <h2 className="mb-3 font-medium">Claude email summaries</h2>
