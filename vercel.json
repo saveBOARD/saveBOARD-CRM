@@ -3,6 +3,7 @@
   "regions": ["syd1"],
   "crons": [
     { "path": "/api/cron/mail-sync", "schedule": "*/10 * * * *" },
-    { "path": "/api/cron/summaries", "schedule": "5-59/10 * * * *" }
+    { "path": "/api/cron/summaries", "schedule": "5-59/10 * * * *" },
+    { "path": "/api/cron/digest", "schedule": "30 18,19 * * *" }
   ]
 }

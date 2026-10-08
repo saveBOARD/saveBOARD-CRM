@@ -11,7 +11,10 @@ import { summaryStatus } from "@/server/mail/summaries";
 import { listSharedStatus } from "@/server/mail/shared";
 import { webEnquiryStatus } from "@/server/mail/enquiries";
 import { claudeConfigured, SUMMARY_MODEL } from "@/server/claude/summarise";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { DigestTestButton } from "@/components/admin/digest-test-button";
+import { digestConfigured } from "@/server/digest/send";
+import { lastDigestDate } from "@/server/digest/run";
 
 export const metadata: Metadata = { title: "System health" };
 
@@ -35,6 +38,8 @@ export default async function HealthPage() {
   const sums = await within(S, "health: summary counts", summaryStatus());
   const shared = (await within(S, "health: shared mailboxes", listSharedStatus())) ?? [];
   const enquiries = (await within(S, "health: website enquiries", webEnquiryStatus())) ?? [];
+  const digestLast = await within(S, "health: digest", lastDigestDate());
+  const digest = digestConfigured();
   const enq = (kind: string, status: string) => enquiries.find((e) => e.kind === kind && e.status === status)?.n ?? 0;
   const cronReady = (process.env.CRON_SECRET ?? "").length >= 16;
   const key = mailKeyStatus();
@@ -120,6 +125,20 @@ export default async function HealthPage() {
             <span className="text-xs text-muted">Reads the last 90 days again, e.g. after a change to how forms are recognised. Nothing is logged twice.</span>
           </form>
         )}
+      </div>
+      <div className="card mt-4 p-5">
+        <h2 className="mb-3 font-medium">Morning digest</h2>
+        <p className="mb-3 text-sm">
+          {digest.ok ? (
+            <>
+              Sends at 7:30 am NZ on weekdays from {digest.from}, to CRM users at saveBOARD addresses only. Last sent:{" "}
+              {digestLast ? formatDate(digestLast) : "not yet"}.
+            </>
+          ) : (
+            <span className="text-bad">Not set up: {digest.problem}. No digest is sent until it is.</span>
+          )}
+        </p>
+        {digest.ok && <DigestTestButton />}
       </div>
       <div className="card mt-4 p-5">
         <h2 className="mb-3 font-medium">Claude email summaries</h2>

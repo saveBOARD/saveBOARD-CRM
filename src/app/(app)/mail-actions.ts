@@ -8,6 +8,7 @@ import { deleteMailAccount } from "@/server/mail/accounts";
 import { mailKeyStatus } from "@/server/mail/crypto";
 import { forgetGraphToken, MAIL_SCOPES, testMailConnection } from "@/server/mail/graph";
 import { refreshChaseList } from "@/server/crm/chase";
+import { runDigest } from "@/server/digest/run";
 import { processWebEnquiries } from "@/server/mail/enquiries";
 import { runSummaries } from "@/server/mail/summaries";
 import { rereadSharedMailboxes } from "@/server/mail/shared";
@@ -89,4 +90,15 @@ export async function rereadShared(): Promise<void> {
   const user = await requireAdmin();
   await rereadSharedMailboxes({ type: "user", profileId: user.id });
   refresh();
+}
+
+/** Admins: email yourself today's digest now, to check it (only to your own saveBOARD address). */
+export async function sendMyDigest(): Promise<ActionState> {
+  const user = await requireAdmin();
+  await refreshChaseList().catch(() => null);
+  const r = await runDigest({ onlyProfileId: user.id });
+  if (r.skipped) return { ok: false, message: `Not sent: ${r.skipped}.` };
+  if (r.failed.length) return { ok: false, message: `Not sent: ${r.failed[0].error}` };
+  if (r.empty.length) return { ok: true, message: "Nothing on your list today, so there's no digest to send.", savedAt: Date.now() };
+  return { ok: true, message: `Sent to ${user.email}. Check your inbox.`, savedAt: Date.now() };
 }

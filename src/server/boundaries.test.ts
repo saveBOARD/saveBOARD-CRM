@@ -39,6 +39,12 @@ describe("hard rules", () => {
     expect(offenders((f) => /Mail\.Send/.test(f.text))).toEqual([]);
   });
 
+  it("only the internal digest sender talks to the email service, and it checks every recipient", () => {
+    expect(offenders((f) => /api\.resend\.com|RESEND_API_KEY/.test(f.text) && f.path !== "server/digest/send.ts")).toEqual([]);
+    const send = files.find((f) => f.path === "server/digest/send.ts")!;
+    expect(send.text).toMatch(/if \(!isSaveboardAddress\(m\.to\)\) throw/);
+  });
+
   it("never calls Outlook's send endpoints: chase emails are saved as drafts only", () => {
     expect(offenders((f) => /\/(send|reply|replyAll|forward)\b|sendMail/i.test(f.text) && /graph/i.test(f.text))).toEqual([]);
   });
