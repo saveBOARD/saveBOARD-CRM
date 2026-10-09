@@ -112,6 +112,14 @@ with checks as (
          and crm.setting_int('quote_expiry_warning_days') = 5
 
   union all
+  select 'ERP customers with open quotes are matched (compact names, one-customer matcher, link page items) (migration 16)',
+         crm.normalize_compact('X-Frame Pty Ltd') = crm.normalize_compact('XFrame')
+         and has_function_privilege('crm_app', 'crm.erp_customer_candidates(text, uuid)', 'execute')
+         and exists (select 1 from information_schema.columns where table_schema = 'crm' and table_name = 'tasks' and column_name = 'link')
+         and exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                     where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

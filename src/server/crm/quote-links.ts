@@ -2,7 +2,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { rows } from "@/server/db/client";
 import { withActor, type Actor } from "@/server/db/actor";
-import { getQuote, quoteBelongsToCompany, type Entity } from "@/server/erp";
+import { getErpCustomerDetail, getQuote, quoteBelongsToCompany, type Entity } from "@/server/erp";
 
 // Linking deals to ERP quotes (phase 5.1). A person links a deal to one of its customer's quotes (or accepts the CRM's
 // suggestion); the CRM then copies the quote's status, value and expiry onto the deal (refresh_deal_erp_mirror). The
@@ -92,4 +92,64 @@ export async function dismissQuoteSuggestion(actor: Actor & { type: "user" }, ta
 export async function refreshQuoteSuggestions(): Promise<number> {
   const [r] = await withActor({ type: "system", reason: "erp_sync" }, (tx) => rows<{ n: number }>(sql`select crm.refresh_quote_suggestions() as n`, tx));
   return r?.n ?? 0;
+}
+
+export type CompanyCandidate = { company_id: string; company_name: string; method: string; score: number };
+
+/** The likely CRM companies for one ERP customer, best first (crm.erp_customer_candidates, migration 16). */
+export async function companyCandidates(entity: Entity, erpCustomerId: string): Promise<CompanyCandidate[]> {
+  return rows<CompanyCandidate>(sql`select company_id, company_name, method, score::float as score from crm.erp_customer_candidates(${entity}, ${erpCustomerId})`);
+}
+
+/**
+ * After an ERP customer is linked to a CRM company: its quotes stop waiting as "unlinked", the "Link ERP customer"
+ * item closes, and the refresh suggests each quote for a deal as usual.
+ */
+export async function settleCustomerLink(actor: Actor & { type: "user" }, entity: Entity, erpCustomerId: string): Promise<void> {
+  await withActor(actor, async (tx) => {
+    await tx.execute(sql`
+      update crm.tasks set status = 'done', closed_reason = 'accepted', completed_at = now()
+       where status = 'open' and id in (select task_id from crm.erp_quote_suggestions
+                                        where entity = ${entity} and erp_customer_id = ${erpCustomerId} and company_id is null)`);
+    await tx.execute(sql`delete from crm.erp_quote_suggestions where entity = ${entity} and erp_customer_id = ${erpCustomerId} and company_id is null and status = 'pending'`);
+  });
+  await refreshQuoteSuggestions();
+}
+
+/** Create the CRM company (and its main contact) from the ERP customer's details, linked straight away. */
+export async function createCompanyFromErp(actor: Actor & { type: "user" }, entity: Entity, erpCustomerId: string): Promise<{ ok: true; companyId: string } | { ok: false; message: string }> {
+  const c = await getErpCustomerDetail(entity, erpCustomerId);
+  if (!c) return { ok: false, message: `That customer isn't in the ${entity} ERP (or was deleted).` };
+  const companyId = await withActor(actor, async (tx) => {
+    const [taken] = await rows<{ company_id: string }>(sql`select company_id from crm.company_erp_links where erp_entity = ${entity} and erp_customer_id = ${erpCustomerId}`, tx);
+    if (taken) return taken.company_id;
+    const email = c.email?.trim().toLowerCase() || null;
+    const domain = email ? email.slice(email.indexOf("@") + 1) : null;
+    const [free] = domain ? await rows<{ free: boolean }>(sql`select exists (select 1 from crm.free_email_domains where domain = ${domain}) as free`, tx) : [{ free: true }];
+    const country = entity === "NZ" ? "NZ" : "AU";
+    const [co] = await rows<{ id: string }>(
+      sql`insert into crm.companies (name, domain, country_code, city, owner_id, source)
+          values (${c.name}, ${domain && !free.free ? domain : null}, ${country}, ${c.billing_city}, ${actor.profileId}, 'erp')
+          returning id`,
+      tx,
+    );
+    await tx.execute(sql`
+      insert into crm.company_erp_links (company_id, erp_entity, erp_customer_id, match_method, confidence, confirmed, confirmed_by, confirmed_at)
+      values (${co.id}, ${entity}, ${erpCustomerId}, 'created_from_erp', 1, true, ${actor.profileId}, now())`);
+    // The ERP's main contact, unless that email is already a CRM contact (then they're linked to this company if free).
+    if (email || c.contact_name) {
+      const [existing] = email ? await rows<{ id: string }>(sql`select id from crm.contacts where lower(email) = ${email} and deleted_at is null`, tx) : [];
+      if (existing) await tx.execute(sql`update crm.contacts set company_id = coalesce(company_id, ${co.id}) where id = ${existing.id}`);
+      else {
+        const parts = (c.contact_name ?? "").trim().split(/\s+/).filter(Boolean);
+        await tx.execute(sql`
+          insert into crm.contacts (first_name, last_name, email, phone_raw, phone_e164, company_id, country_code, owner_id, source)
+          values (${parts.length > 1 ? parts.slice(0, -1).join(" ") : (parts[0] ?? null)}, ${parts.length > 1 ? parts.at(-1)! : null}, ${email},
+                  ${c.phone}, crm.normalize_phone(${c.phone}, ${country}), ${co.id}, ${country}, ${actor.profileId}, 'erp')`);
+      }
+    }
+    return co.id;
+  });
+  await settleCustomerLink(actor, entity, erpCustomerId);
+  return { ok: true, companyId };
 }

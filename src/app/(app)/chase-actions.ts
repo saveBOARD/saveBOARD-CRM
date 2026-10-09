@@ -57,6 +57,7 @@ export async function acceptChaseSuggestion(form: FormData): Promise<void> {
   if (!taskId.success) return;
   const actor = { type: "user" as const, profileId: user.id };
   const [t] = await taskRule(taskId.data);
+  if (t?.rule === "suggest_customer_link" && t.link?.startsWith("/erp-customers/")) redirect(t.link);
   if (t?.rule === "suggest_quote") {
     const r = await acceptQuoteSuggestion(actor, taskId.data);
     refresh();
@@ -73,7 +74,7 @@ export async function dismissChaseItem(form: FormData): Promise<void> {
   if (!taskId.success) return;
   const actor = { type: "user" as const, profileId: user.id };
   const [t] = await taskRule(taskId.data);
-  if (t?.rule === "suggest_quote") await dismissQuoteSuggestion(actor, taskId.data);
+  if (t?.rule === "suggest_quote" || t?.rule === "suggest_customer_link") await dismissQuoteSuggestion(actor, taskId.data);
   else await dismissChase(actor, taskId.data);
   refresh();
 }

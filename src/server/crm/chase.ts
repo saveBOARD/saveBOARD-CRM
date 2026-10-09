@@ -27,6 +27,8 @@ export type ChaseItem = {
   last_activity_at: string | null;
   created_by_claude: boolean;
   draft_text: string | null;
+  /** Where the item opens when it isn't about a deal, contact or company (e.g. the ERP customer link page). */
+  link: string | null;
 };
 
 /** Where each kind of item sits on the page, most urgent first. Claude's follow-ups and suggestions slot in. */
@@ -41,6 +43,7 @@ export const RULE_ORDER: Record<string, number> = {
   specifier_followup: 5,
   existing_customer_checkin: 6,
   suggest_negotiation: 7,
+  suggest_customer_link: 7.4,
   suggest_quote: 7.5,
 };
 
@@ -54,7 +57,7 @@ export async function listChase(opts: { assignedTo?: string } = {}): Promise<Cha
            nullif(trim(concat_ws(' ', ct.first_name, ct.last_name)), '') as contact,
            co.name as company, d.entity, d.stage::text as stage,
            coalesce(d.last_activity_at, ct.last_activity_at, co.last_activity_at) as last_activity_at,
-           t.created_by_claude, t.draft_text
+           t.created_by_claude, t.draft_text, t.link
     from crm.tasks t
     left join crm.deals d on d.id = t.deal_id
     left join crm.contacts ct on ct.id = coalesce(t.contact_id, d.primary_contact_id)
@@ -76,7 +79,7 @@ export async function countUpcoming(assignedTo?: string): Promise<number> {
   return r?.n ?? 0;
 }
 
-export const DISMISSABLE = new Set(["email_follow_up", "call_follow_up", "visit_follow_up", "suggest_negotiation", "suggest_quote"]);
+export const DISMISSABLE = new Set(["email_follow_up", "call_follow_up", "visit_follow_up", "suggest_negotiation", "suggest_quote", "suggest_customer_link"]);
 
 type Target = { deal_id: string | null; contact_id: string | null; company_id: string | null; rule: string; title: string };
 
@@ -151,5 +154,5 @@ export async function refreshChaseList(): Promise<{ erpUpdated: number; opened: 
 
 /** Which rule an open item belongs to (to route suggestions to the right handler). */
 export async function taskRule(taskId: string) {
-  return rows<{ rule: string }>(sql`select rule from crm.tasks where id = ${taskId} and status = 'open'`);
+  return rows<{ rule: string; link: string | null }>(sql`select rule, link from crm.tasks where id = ${taskId} and status = 'open'`);
 }

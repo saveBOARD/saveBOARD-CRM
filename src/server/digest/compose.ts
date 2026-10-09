@@ -22,6 +22,7 @@ const GROUP_TITLES: Record<string, string> = {
   specifier_followup: "Specifier follow-ups",
   existing_customer_checkin: "Customer check-ins",
   suggest_negotiation: "Suggestions",
+  suggest_customer_link: "ERP customers to link",
   suggest_quote: "ERP quotes to link",
 };
 const ORDER = Object.keys(GROUP_TITLES);

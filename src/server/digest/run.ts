@@ -32,8 +32,8 @@ export function appBaseUrl(): string {
   return "https://saveboard-crm.vercel.app";
 }
 
-const hrefFor = (base: string, i: { deal_id: string | null; contact_id: string | null; company_id: string | null }) =>
-  i.deal_id ? `${base}/deals/${i.deal_id}` : i.contact_id ? `${base}/contacts/${i.contact_id}` : i.company_id ? `${base}/companies/${i.company_id}` : `${base}/`;
+const hrefFor = (base: string, i: { deal_id: string | null; contact_id: string | null; company_id: string | null; link?: string | null }) =>
+  i.link ? `${base}${i.link}` : i.deal_id ? `${base}/deals/${i.deal_id}` : i.contact_id ? `${base}/contacts/${i.contact_id}` : i.company_id ? `${base}/companies/${i.company_id}` : `${base}/`;
 
 /**
  * Send the digests. `force` skips the time and once-a-day checks; `onlyProfileId` sends one person their own digest

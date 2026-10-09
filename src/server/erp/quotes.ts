@@ -88,3 +88,39 @@ export async function quoteBelongsToCompany(companyId: string, entity: Entity, n
       where l.company_id = ${companyId} and o.entity_id = ${entity} and o.number = ${number}) as ok`);
   return r?.ok ?? false;
 }
+
+export type ErpCustomerDetail = {
+  id: string;
+  entity_id: Entity;
+  code: string | null;
+  name: string;
+  billing_line1: string | null;
+  billing_line2: string | null;
+  billing_city: string | null;
+  billing_region: string | null;
+  billing_postcode: string | null;
+  billing_country: string | null;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  credit_hold: boolean | null;
+};
+
+/** One ERP customer's trading details (no cost, no credit figures beyond the hold flag). */
+export async function getErpCustomerDetail(entity: Entity, id: string): Promise<ErpCustomerDetail | null> {
+  const [c] = await erpRead<ErpCustomerDetail>(sql`
+    select id, entity_id, code, name, billing_line1, billing_line2, billing_city, billing_region, billing_postcode, billing_country,
+           contact_name, phone, email, credit_hold
+    from erp_read.customers where entity_id = ${entity} and id = ${id}`);
+  return c ?? null;
+}
+
+/** A customer's quotes and orders in the last 12 months (for the link page). */
+export async function listCustomerQuotes(entity: Entity, customerId: string): Promise<QuoteOption[]> {
+  return erpRead<QuoteOption>(sql`
+    select o.id, o.number, o.title, o.status::text as status, o.quote_status::text as quote_status, o.order_date,
+           o.quote_expires_on, o.currency, o.total, null::uuid as linked_deal_id, null::text as linked_deal_title
+    from erp_read.sales_orders o
+    where o.entity_id = ${entity} and o.customer_id = ${customerId} and o.order_date > current_date - 365 and o.status <> 'cancelled'
+    order by o.order_date desc limit 20`);
+}
