@@ -1,6 +1,6 @@
 # Phase 4 plan: call notes and consultant visits
 
-Status: **draft for Paul's approval** (9 Oct 2026). Brief: `docs/DESIGN.md`, build phase 4 ("Voice notes and consultant import: the post-call voice note flow and the Excel visit import"), sections *Email and phone capture* and *Consultant visit import*, and the specifier track (deferred to this phase, 4 Oct 2026).
+Status: **approved by Paul, 9 Oct 2026** ("approve as recommended"), with the answers below; three follow-up questions on the consultant reports (A to C) are open. Brief: `docs/DESIGN.md`, build phase 4 ("Voice notes and consultant import: the post-call voice note flow and the Excel visit import"), sections *Email and phone capture* and *Consultant visit import*, and the specifier track (deferred to this phase, 4 Oct 2026).
 
 ## Goal
 
@@ -13,6 +13,32 @@ Calls and consultant visits end up in the CRM as easily as email already does. A
 - An admin uploads the consultants' Excel log; the CRM shows what it will do (new contacts, matches, problems) before saving anything, then reports rows read, created, updated and skipped. Uploading the same or an overlapping file again changes nothing.
 - Visited specifiers follow a light track on the contact (Visited, Follow-up, Specified, Enquiry) and appear on the Today page when a follow-up is due (rule 5, already in the chase list).
 - Call notes follow the same 2-year retention as email (already in place from 3.8).
+
+## Decided (9 Oct 2026)
+
+| Item | Decision |
+|---|---|
+| Q1 call notes | Dictate (or type) into a text box: the phone's keyboard microphone or Wispr Flow does the transcription. No audio stored, no speech-to-text service. |
+| Q2 consultant reports | Monthly Excel reports from the consultancy (samples May to August 2026, in Paul's Downloads, not in the repo). Monthly, not weekly: see the follow-up questions below. |
+| Q3 specifier track | Visited, Follow-up, Specified, Enquiry, on the contact; a deal only when a real enquiry arrives. |
+| Q4 follow-up owners | The contact's owner; new specifiers alternate by country as web enquiries do (NZ Paul and Dave, AUS Iris and Mark). |
+| Q5 phones | iPhone and Android. |
+| Q6 unknown caller | Offer New contact on the confirm screen, filled in from the note; never created without a tap. |
+
+## What the consultant reports contain (samples checked 9 Oct 2026)
+
+- One sheet, one row per practice visited: practice, contact name (with title, e.g. "Mr"), email (nearly always), phone, location and postal address, website, type (Architects, Architectural Designers, Engineers, Design & Construction...), predominant work, workload (Quiet to Very busy), what was provided (brochures, samples, website details for saveBOARD and betterBRACE), the consultant's comments (about 650 characters a visit), and a group: **Priority Feedback** or **General Feedback**.
+- **No visit date and no consultant name.** The month is in the file name ("...for August 2026"); some names add a region ("_Northern").
+- Three layouts (columns in a different order; "Client D"/"Client C" and "Type"/"Practice Type" headings): the import recognises all three by their headings, so no mapping is needed for these; other layouts can still be mapped by hand.
+- About 40 to 80 rows per report; the three file-name patterns look like three consultants or regions.
+
+**Follow-up questions**
+
+A. **Which visits get a follow-up?** Recommended: **Priority Feedback** rows create a follow-up on the Today page; General Feedback rows are recorded (visit, comments, specifier) with no task. Otherwise about 160 follow-ups land at once every month.
+
+B. **Who and where.** Do the three report types come from three consultants or regions (e.g. Northern, and which are the other two)? Are they all New Zealand? The upload will ask for the region and month (pre-filled from the file name).
+
+C. **Back-load May to August?** Recommended: yes, as history: specifiers, visits and comments recorded, but no follow-ups for those months (they're past). From September on, follow-ups as in A.
 
 ## Already in place (from phases 1 to 3)
 
