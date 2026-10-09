@@ -1,7 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { rows } from "@/server/db/client";
-import type { Consent, Segment } from "@/lib/labels";
+import type { Consent, Segment, SpecifierStage } from "@/lib/labels";
 import { companyDisplayName } from "./companies";
 
 // Contacts: people (and generic mailboxes such as info@) at companies.
@@ -67,6 +67,8 @@ export type Contact = {
   last_activity_at: string | null; // timestamptz as Postgres text (Drizzle returns timestamps as text)
   hubspot_id: string | null;
   created_at: string; // timestamptz as Postgres text
+  is_specifier: boolean;
+  specifier_stage: SpecifierStage | null;
 };
 
 export async function getContact(id: string): Promise<Contact | null> {
@@ -75,7 +77,7 @@ export async function getContact(id: string): Promise<Contact | null> {
            ct.city, ct.country_code, ct.role_title, ct.kind, ct.segment, ct.samples_sent, ct.track_followup,
            ct.owner_id, p.display_name as owner, ct.company_id, ${companyDisplayName("co")} as company,
            ct.source, ct.consent_status, ct.consent_source, ct.consent_at, ct.notes, ct.last_activity_at,
-           ct.hubspot_id, ct.created_at
+           ct.hubspot_id, ct.created_at, ct.is_specifier, ct.specifier_stage
     from crm.contacts ct
     left join crm.companies co on co.id = ct.company_id and co.deleted_at is null
     left join crm.profiles p on p.id = ct.owner_id

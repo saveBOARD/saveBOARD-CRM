@@ -56,4 +56,14 @@ export const TONE_CLASS: Record<Tone, string> = {
 
 /** Where a company or contact came from. */
 export const sourceLabel = (s: string | null | undefined) =>
-  s ? ({ hubspot: "HubSpot", manual: "Added in the CRM", form: "Website form", shop: "Online shop order", import: "Import", visit: "Consultant visit" }[s] ?? s) : "";
+  s ? ({ hubspot: "HubSpot", manual: "Added in the CRM", form: "Website form", shop: "Online shop order", import: "Import", visit: "Consultant visit", consultant: "Consultant visit report", call: "Phone call" }[s] ?? s) : "";
+
+/** The specifier track (phase 4.4), in order. */
+export const SPECIFIER_STAGES = {
+  visited: { label: "Visited", tone: "pending" },
+  follow_up: { label: "Follow-up", tone: "progress" },
+  specified: { label: "Specified", tone: "ok" },
+  enquiry: { label: "Enquiry", tone: "ok" },
+} as const satisfies Record<string, { label: string; tone: Tone }>;
+export type SpecifierStage = keyof typeof SPECIFIER_STAGES;
+export const SPECIFIER_ORDER = Object.keys(SPECIFIER_STAGES) as SpecifierStage[];

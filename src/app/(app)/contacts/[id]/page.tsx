@@ -9,11 +9,13 @@ import { SimpleTable } from "@/components/ui/simple-table";
 import { Timeline } from "@/components/ui/timeline";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { isUuid } from "@/lib/ids";
-import { CONSENT, countryName, SEGMENTS, sourceLabel, STAGES } from "@/lib/labels";
+import { CONSENT, countryName, SEGMENTS, sourceLabel, SPECIFIER_STAGES, STAGES } from "@/lib/labels";
 import { requireUser } from "@/server/auth/session";
 import { listActivities } from "@/server/crm/activities";
 import { getContact } from "@/server/crm/contacts";
 import { listDealsFor, type DealListRow } from "@/server/crm/deals";
+import { listVisits } from "@/server/crm/specifiers";
+import { SpecifierPanel } from "@/components/specifiers/specifier-panel";
 
 export async function generateMetadata({ params }: PageProps<"/contacts/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -28,7 +30,7 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
   const contact = await getContact(id);
   if (!contact) notFound();
 
-  const [deals, activities] = await Promise.all([listDealsFor({ contactId: id }), listActivities({ contactId: id })]);
+  const [deals, activities, visits] = await Promise.all([listDealsFor({ contactId: id }), listActivities({ contactId: id }), listVisits(id)]);
   const consent = CONSENT[contact.consent_status];
 
   return (
@@ -75,6 +77,9 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
             <>
               <Pill tone={consent.tone}>Email consent: {consent.label}</Pill>
               {contact.track_followup && <Pill tone="progress">Follow-up tracked</Pill>}
+              {contact.is_specifier && contact.specifier_stage && (
+                <Pill tone={SPECIFIER_STAGES[contact.specifier_stage].tone}>Specifier: {SPECIFIER_STAGES[contact.specifier_stage].label}</Pill>
+              )}
             </>
           }
         >
@@ -113,6 +118,10 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
           )}
         </HeaderCard>
       </div>
+
+      {contact.kind === "person" && (
+        <SpecifierPanel contactId={contact.id} stage={contact.specifier_stage} isSpecifier={contact.is_specifier} visits={visits} />
+      )}
 
       <Panel title={`Deals (${deals.length})`}>
         <SimpleTable<DealListRow>

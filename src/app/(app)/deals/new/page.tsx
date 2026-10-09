@@ -32,6 +32,7 @@ export default async function NewDealPage({ searchParams }: PageProps<"/deals/ne
         company={company ? { id: company.id, name: company.name } : null}
         contact={contact ? { id: contact.id, name: contact.name ?? contact.email ?? "" } : null}
         defaultEntity={entity}
+        defaultSource={typeof sp.source === "string" && sp.source in DEAL_SOURCES ? sp.source : null}
       />
     </div>
   );

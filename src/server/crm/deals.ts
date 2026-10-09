@@ -128,6 +128,10 @@ export async function createDeal(actor: Actor, d: DealInput & { stage?: Stage })
           returning id`,
       tx,
     );
+    // A real enquiry from a specifier (phase 4.4): they move to Enquiry on the specifier track.
+    if (d.source === "specifier" && d.primary_contact_id) {
+      await tx.execute(sql`update crm.contacts set is_specifier = true, specifier_stage = 'enquiry' where id = ${d.primary_contact_id}`);
+    }
     return r.id;
   });
 }

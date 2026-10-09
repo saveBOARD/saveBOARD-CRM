@@ -82,6 +82,9 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
         <Tab href="/contacts?mine=1" active={mine}>
           My contacts
         </Tab>
+        <Tab href="/specifiers" active={false}>
+          Specifiers
+        </Tab>
       </div>
       <DataTable
         id="contacts"

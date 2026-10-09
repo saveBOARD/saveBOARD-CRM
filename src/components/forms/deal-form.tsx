@@ -17,11 +17,13 @@ type Props = {
   company?: { id: string; name: string } | null;
   contact?: { id: string; name: string } | null;
   defaultEntity?: "NZ" | "AUS" | null;
+  /** Pre-selected source for a new deal (e.g. 'specifier' from a specifier's page). */
+  defaultSource?: string | null;
 };
 
 const CURRENCY = { NZ: "NZD", AUS: "AUD" } as const;
 
-export function DealForm({ deal, users, defaultOwnerId, sources, company, contact, defaultEntity }: Props) {
+export function DealForm({ deal, users, defaultOwnerId, sources, company, contact, defaultEntity, defaultSource }: Props) {
   const [state, action, pending] = useActionState(saveDeal, initialActionState);
   const e = state.fieldErrors ?? {};
   const s = state.values;
@@ -93,7 +95,7 @@ export function DealForm({ deal, users, defaultOwnerId, sources, company, contac
             </span>
           )}
         </div>
-        <SelectField name="source" label="Source" options={[{ value: "", label: "Not set" }, ...sources]} defaultValue={v("source", deal?.source)} error={e.source} />
+        <SelectField name="source" label="Source" options={[{ value: "", label: "Not set" }, ...sources]} defaultValue={v("source", deal?.source ?? defaultSource)} error={e.source} />
         <TextField name="erp_so_number" label="ERP quote / order number" defaultValue={v("erp_so_number", deal?.erp_so_number)} error={e.erp_so_number} hint="If one exists, e.g. SO-1594" />
       </FormCard>
       <FormCard title="Next step">
