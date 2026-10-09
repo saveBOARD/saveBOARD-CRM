@@ -41,6 +41,7 @@ export const RULE_ORDER: Record<string, number> = {
   specifier_followup: 5,
   existing_customer_checkin: 6,
   suggest_negotiation: 7,
+  suggest_quote: 7.5,
 };
 
 /** Open items due today or earlier, for one user or everyone. */
@@ -75,7 +76,7 @@ export async function countUpcoming(assignedTo?: string): Promise<number> {
   return r?.n ?? 0;
 }
 
-export const DISMISSABLE = new Set(["email_follow_up", "call_follow_up", "visit_follow_up", "suggest_negotiation"]);
+export const DISMISSABLE = new Set(["email_follow_up", "call_follow_up", "visit_follow_up", "suggest_negotiation", "suggest_quote"]);
 
 type Target = { deal_id: string | null; contact_id: string | null; company_id: string | null; rule: string; title: string };
 
@@ -139,10 +140,16 @@ export async function dismissChase(actor: Actor & { type: "user" }, taskId: stri
 }
 
 /** Refresh the ERP quote mirror, then turn the rules into tasks. Runs on the 10-minute job. */
-export async function refreshChaseList(): Promise<{ erpUpdated: number; opened: number; closed: number }> {
+export async function refreshChaseList(): Promise<{ erpUpdated: number; opened: number; closed: number; quoteSuggestions: number }> {
   return withActor({ type: "system", reason: "follow_up" }, async (tx) => {
     const [m] = await rows<{ n: number }>(sql`select crm.refresh_deal_erp_mirror() as n`, tx);
     const [r] = await rows<{ opened: number; closed: number }>(sql`select * from crm.refresh_chase_tasks()`, tx);
-    return { erpUpdated: m?.n ?? 0, opened: r?.opened ?? 0, closed: r?.closed ?? 0 };
+    const [q] = await rows<{ n: number }>(sql`select crm.refresh_quote_suggestions() as n`, tx);
+    return { erpUpdated: m?.n ?? 0, opened: r?.opened ?? 0, closed: r?.closed ?? 0, quoteSuggestions: q?.n ?? 0 };
   });
+}
+
+/** Which rule an open item belongs to (to route suggestions to the right handler). */
+export async function taskRule(taskId: string) {
+  return rows<{ rule: string }>(sql`select rule from crm.tasks where id = ${taskId} and status = 'open'`);
 }

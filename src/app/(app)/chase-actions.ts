@@ -1,12 +1,14 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { ActionState } from "@/lib/action-state";
 import { toLocalDate } from "@/lib/format";
 import { requireUser } from "@/server/auth/session";
-import { acceptSuggestion, completeChase, dismissChase, snoozeChase } from "@/server/crm/chase";
+import { acceptSuggestion, completeChase, dismissChase, snoozeChase, taskRule } from "@/server/crm/chase";
 import { draftChase, saveChaseDraft } from "@/server/crm/drafts";
+import { acceptQuoteSuggestion, dismissQuoteSuggestion } from "@/server/crm/quote-links";
 
 // Chase list actions (Today page). Each one: check the user, validate, write via withActor (in server/crm/chase.ts).
 
@@ -52,14 +54,27 @@ export async function snoozeChaseItem(_prev: ActionState, form: FormData): Promi
 export async function acceptChaseSuggestion(form: FormData): Promise<void> {
   const user = await requireUser();
   const taskId = id.safeParse(form.get("task_id"));
-  if (taskId.success) await acceptSuggestion({ type: "user", profileId: user.id }, taskId.data);
+  if (!taskId.success) return;
+  const actor = { type: "user" as const, profileId: user.id };
+  const [t] = await taskRule(taskId.data);
+  if (t?.rule === "suggest_quote") {
+    const r = await acceptQuoteSuggestion(actor, taskId.data);
+    refresh();
+    if (r.ok) redirect(`/deals/${r.dealId}`);
+    return;
+  }
+  await acceptSuggestion(actor, taskId.data);
   refresh();
 }
 
 export async function dismissChaseItem(form: FormData): Promise<void> {
   const user = await requireUser();
   const taskId = id.safeParse(form.get("task_id"));
-  if (taskId.success) await dismissChase({ type: "user", profileId: user.id }, taskId.data);
+  if (!taskId.success) return;
+  const actor = { type: "user" as const, profileId: user.id };
+  const [t] = await taskRule(taskId.data);
+  if (t?.rule === "suggest_quote") await dismissQuoteSuggestion(actor, taskId.data);
+  else await dismissChase(actor, taskId.data);
   refresh();
 }
 

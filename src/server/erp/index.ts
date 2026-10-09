@@ -5,6 +5,7 @@ import { erpRead } from "./read";
 
 export * from "./company";
 export * from "./matches";
+export * from "./quotes";
 
 // The ONLY module that reads ERP data. Everything else asks this module, so the erp_read views can later be
 // swapped for the ERP's read-only API without touching the rest of the CRM (brief: ERP boundary).

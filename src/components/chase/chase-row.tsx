@@ -16,6 +16,7 @@ export type ChaseRowProps = {
   who: string | null; // contact / company line
   meta: string; // e.g. "NZ · Contacted · quiet 9 days · Paul Charteris"
   suggestion: boolean;
+  acceptLabel?: string;
   dismissable: boolean;
   byClaude: boolean;
   draft: ExistingDraft | null;
@@ -53,7 +54,7 @@ export function ChaseRow(p: ChaseRowProps) {
               <form action={acceptChaseSuggestion}>
                 <input type="hidden" name="task_id" value={p.id} />
                 <button type="submit" className="btn-primary">
-                  Move to Negotiation
+                  {p.acceptLabel ?? "Move to Negotiation"}
                 </button>
               </form>
               <form action={dismissChaseItem}>

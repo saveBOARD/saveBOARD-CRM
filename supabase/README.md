@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 and 13 ran on 9 Oct 2026 (17 checks pass); 14 ran on 10 Oct 2026 (18 checks pass).
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 and 13 ran on 9 Oct 2026 (17 checks pass); 14 ran on 10 Oct 2026 (18 checks pass). **15 still to run.**
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
@@ -23,7 +23,8 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 12 | `20261009000100_shared_mailboxes.sql` | Shared mailboxes (folder sync positions) and the website enquiry queue; owner pairs and the 7-day deal rule as settings | No |
 | 13 | `20261009000200_chase_list.sql` | The chase list: confirmed rules (business-day first response, 2-year customers), ERP quote mirror without stage moves, rules turned into tasks | No (reads erp_read views) |
 | 14 | `20261010000100_consultant_visits.sql` | Consultant visit reports: region, month, group, action and source on visits; the generic 'visited specifier' chase rule retired (follow-ups come from the comments) | No |
-| - | `../scripts/verify_after_migration.sql` | 18 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
+| 15 | `20261010000200_erp_quote_link.sql` | Linking deals to ERP quotes: suggestions for unlinked quotes; quote expiry warning 5 days | No (reads erp_read views) |
+| - | `../scripts/verify_after_migration.sql` | 19 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
 

@@ -105,6 +105,13 @@ with checks as (
          and strpos(pg_get_viewdef('crm.v_chase_list'::regclass), 'visits') = 0
 
   union all
+  select 'ERP quote suggestions with row-level security, the suggestion refresh, and the 5-day expiry warning (migration 15)',
+         exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                 where n.nspname = 'crm' and c.relname = 'erp_quote_suggestions' and c.relrowsecurity)
+         and has_function_privilege('crm_app', 'crm.refresh_quote_suggestions()', 'execute')
+         and crm.setting_int('quote_expiry_warning_days') = 5
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

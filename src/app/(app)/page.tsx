@@ -29,6 +29,7 @@ function groups(t: { stale: number; qexp: number; frd: number; cci: number }): R
     specifier_followup: { title: "Specifier follow-ups", hint: "Visited, no follow-up yet" },
     existing_customer_checkin: { title: "Customer check-ins", hint: `ERP customer, no contact for ${plural(t.cci, "day")}` },
     suggest_negotiation: { title: "Suggestions", hint: "A customer replied after the quote" },
+    suggest_quote: { title: "ERP quotes to link", hint: "Quotes made in the ERP for your customers that aren't on a deal yet" },
   };
 }
 
@@ -106,7 +107,8 @@ export default async function TodayPage({ searchParams }: PageProps<"/">) {
                   detail={i.detail}
                   who={[i.contact, i.company].filter(Boolean).join(", ") || null}
                   meta={metaFor(i, everyone)}
-                  suggestion={i.rule === "suggest_negotiation"}
+                  suggestion={i.rule === "suggest_negotiation" || i.rule === "suggest_quote"}
+                  acceptLabel={i.rule === "suggest_quote" ? (i.deal_id ? "Link the quote" : "Open the deal") : "Move to Negotiation"}
                   dismissable={DISMISSABLE.has(i.rule) && i.rule !== "suggest_negotiation"}
                   byClaude={i.created_by_claude}
                   draft={(() => {

@@ -15,6 +15,8 @@ import { requireUser } from "@/server/auth/session";
 import { listActivities } from "@/server/crm/activities";
 import { getDeal, listStageHistory, type StageChange } from "@/server/crm/deals";
 import { DEAL_SOURCES } from "@/server/crm/schemas";
+import { getCompanyErpAccounts, getQuote, listCompanyQuotes } from "@/server/erp";
+import { ErpQuotePanel } from "@/components/deals/erp-quote-panel";
 
 export async function generateMetadata({ params }: PageProps<"/deals/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -32,6 +34,19 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
   const deal = await getDeal(id);
   if (!deal) notFound();
   const [history, activities] = await Promise.all([listStageHistory(id), listActivities({ dealId: id })]);
+  // ERP quote (phase 5.1): the linked one, or the company's quotes to link one.
+  const linked = deal.entity && deal.erp_so_number ? await getQuote(deal.entity, deal.erp_so_number) : null;
+  const accounts = !linked && deal.company_id ? await getCompanyErpAccounts(deal.company_id) : [];
+  const canLink = linked
+    ? null
+    : !deal.entity
+      ? "Set the deal's country (NZ or AUS) to link an ERP quote."
+      : !deal.company_id
+        ? "Set the deal's company to link an ERP quote."
+        : !accounts.some((a) => a.erp_entity === deal.entity)
+          ? `The company isn't linked to a ${deal.entity} ERP customer yet: link it on the company page (or ERP matches), then its quotes show here.`
+          : null;
+  const quoteOptions = !linked && !canLink && deal.company_id && deal.entity ? await listCompanyQuotes(deal.company_id, deal.entity) : [];
   const stage = STAGES[deal.stage];
   const closed = deal.stage === "won" || deal.stage === "lost";
 
@@ -88,6 +103,15 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
           {closed && <Field label="Closed">{formatDateTime(deal.closed_at)}</Field>}
         </HeaderCard>
       </div>
+
+      {deal.erp_so_number && !linked ? (
+        <p className="card p-4 text-sm">
+          ERP number <span className="font-mono">{deal.erp_so_number}</span> isn&apos;t in the ERP for {deal.entity ?? "this country"}. Check the number, or
+          unlink it in Edit.
+        </p>
+      ) : (
+        <ErpQuotePanel dealId={deal.id} linked={linked} options={quoteOptions} canLink={canLink} />
+      )}
 
       <Panel title="Stage">
         <div className="grid gap-4">

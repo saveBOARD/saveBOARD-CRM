@@ -1,6 +1,6 @@
 # Phase 5 plan: the ERP quote link and write-back
 
-Status: **draft for Paul's approval** (10 Oct 2026). Brief: `docs/DESIGN.md`, build phase 5 ("ERP quote link and write-back: deal stages follow ERP quote status automatically, then the ERP endpoints for creating customers and draft quotes"), sections *ERP boundary and integration* and *Pipeline and automatic deal movement*, and open item 2 (the ERP write path).
+Status: **approved by Paul, 10 Oct 2026** ("approve as recommended"), with one change: the quote expiry warning is **5 days** before the expiry date (was 3). An ERP status of *expired* marks a deal Lost; the expiry date passing on its own never does (it only warns). Brief: `docs/DESIGN.md`, build phase 5 ("ERP quote link and write-back: deal stages follow ERP quote status automatically, then the ERP endpoints for creating customers and draft quotes"), sections *ERP boundary and integration* and *Pipeline and automatic deal movement*, and open item 2 (the ERP write path).
 
 ## Goal
 

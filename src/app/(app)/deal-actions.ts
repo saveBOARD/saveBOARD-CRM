@@ -8,6 +8,7 @@ import { requireUser } from "@/server/auth/session";
 import { createDeal, findDealByErpNumber, moveDeal, snoozeDeal, updateDeal } from "@/server/crm/deals";
 import { dealSchema, fieldErrors, formObject, moveSchema, snoozeSchema } from "@/server/crm/schemas";
 import { searchContacts } from "@/server/crm/writes";
+import { linkQuote, unlinkQuote } from "@/server/crm/quote-links";
 
 // Deal actions: every user can create, edit and move deals (phase 2 decision 2). Writes go through withActor.
 
@@ -72,4 +73,24 @@ export async function snoozeDealAction(_prev: ActionState, form: FormData): Prom
 export async function findContacts(q: string, companyId?: string | null) {
   await requireUser();
   return searchContacts(String(q).slice(0, 100), isUuid(companyId) ? companyId : null);
+}
+
+/** Link a deal to one of its customer's ERP quotes or orders (phase 5.1). */
+export async function linkQuoteAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const dealId = form.get("deal_id");
+  const number = String(form.get("number") ?? "").trim();
+  if (!isUuid(dealId)) return { ok: false, message: "This deal no longer exists." };
+  if (!/^[A-Za-z0-9-]{2,30}$/.test(number)) return { ok: false, message: "Enter the ERP number, e.g. SO-1602." };
+  const r = await linkQuote({ type: "user", profileId: user.id }, dealId, number);
+  if (!r.ok) return { ok: false, message: r.message };
+  refresh();
+  return { ok: true, message: "Linked.", savedAt: Date.now() };
+}
+
+export async function unlinkQuoteAction(form: FormData): Promise<void> {
+  const user = await requireUser();
+  const dealId = form.get("deal_id");
+  if (isUuid(dealId)) await unlinkQuote({ type: "user", profileId: user.id }, dealId);
+  refresh();
 }
