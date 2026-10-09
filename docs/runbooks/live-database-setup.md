@@ -131,7 +131,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 12 | `supabase/migrations/20261009000100_shared_mailboxes.sql` | Done 9 Oct 2026 | Shared mailboxes and website enquiries. Changes no ERP table. |
 | 13 | `supabase/migrations/20261009000200_chase_list.sql` | Done 9 Oct 2026 | The chase list (Today page). Changes no ERP table. |
 | 14 | `supabase/migrations/20261010000100_consultant_visits.sql` | Done 10 Oct 2026 | Consultant visit reports. Changes no ERP table. |
-| 15 | `supabase/migrations/20261010000200_erp_quote_link.sql` | **To run** | Linking deals to ERP quotes; 5-day quote expiry warning. Changes no ERP table. |
+| 15 | `supabase/migrations/20261010000200_erp_quote_link.sql` | Done 10 Oct 2026 | Linking deals to ERP quotes; 5-day quote expiry warning. Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
