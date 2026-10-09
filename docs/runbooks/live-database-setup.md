@@ -133,7 +133,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 14 | `supabase/migrations/20261010000100_consultant_visits.sql` | Done 10 Oct 2026 | Consultant visit reports. Changes no ERP table. |
 | 15 | `supabase/migrations/20261010000200_erp_quote_link.sql` | Done 10 Oct 2026 | Linking deals to ERP quotes; 5-day quote expiry warning. Changes no ERP table. |
 | 16 | `supabase/migrations/20261010000300_erp_customer_matching.sql` | Done 10 Oct 2026 | Matching ERP customers with open quotes. Changes no ERP table. |
-| 17 | `supabase/migrations/20261010000400_fewer_customer_suggestions.sql` | **To run** | Fewer, better ERP customer suggestions. Changes no ERP table. |
+| 17 | `supabase/migrations/20261010000400_fewer_customer_suggestions.sql` | Done 10 Oct 2026 | Fewer, better ERP customer suggestions. Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 

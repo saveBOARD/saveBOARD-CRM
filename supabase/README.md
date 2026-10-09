@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 and 13 ran on 9 Oct 2026 (17 checks pass); 14 ran on 10 Oct 2026 (18 checks pass); 15 ran on 10 Oct 2026 (19 checks pass); 16 ran on 10 Oct 2026 (20 checks pass). **17 still to run.**
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 and 13 ran on 9 Oct 2026 (17 checks pass); 14 ran on 10 Oct 2026 (18 checks pass); 15 ran on 10 Oct 2026 (19 checks pass); 16 ran on 10 Oct 2026 (20 checks pass); 17 ran on 10 Oct 2026 (21 checks pass).
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
