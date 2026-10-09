@@ -99,6 +99,12 @@ with checks as (
          and exists (select 1 from crm.settings where key = 'first_response_business_days')
 
   union all
+  select 'consultant visit reports: visit columns, and the chase list no longer lists every visited specifier (migration 14)',
+         exists (select 1 from information_schema.columns where table_schema = 'crm' and table_name = 'visits' and column_name = 'report_month')
+         and exists (select 1 from information_schema.columns where table_schema = 'crm' and table_name = 'visits' and column_name = 'activity_id')
+         and strpos(pg_get_viewdef('crm.v_chase_list'::regclass), 'visits') = 0
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

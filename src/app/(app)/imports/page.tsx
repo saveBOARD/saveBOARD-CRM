@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import { ContactsImport } from "@/components/imports/contacts-import";
 import { EmailEventsImport, NotesImport } from "@/components/imports/hubspot-imports";
+import { VisitsImport } from "@/components/imports/visits-import";
 import { PageHeader } from "@/components/shell/page-header";
 import { Panel } from "@/components/ui/detail";
 import { SimpleTable } from "@/components/ui/simple-table";
 import { formatDateTime } from "@/lib/format";
 import { requireUser } from "@/server/auth/session";
 import { listImportBatches, listUnlinkedHubspotNotes, type ImportBatch, type UnlinkedNote } from "@/server/crm/imports";
+import { rememberedRegions } from "@/server/visits/import";
 
 export const metadata: Metadata = { title: "Imports" };
+// Visit reports with follow-ups: Claude reads every comment (about a minute for a large report).
+export const maxDuration = 300;
 
 const KIND: Record<string, string> = {
   hubspot_contacts: "HubSpot contacts",
@@ -31,6 +35,10 @@ function split(b: ImportBatch, what: "created" | "updated") {
   const d = b.details;
   const contacts = d?.[`contacts_${what}`];
   const companies = d?.[`companies_${what}`];
+  if (b.kind === "consultant_visits" && d)
+    return what === "created"
+      ? `${b.rows_created.toLocaleString("en-NZ")} new contacts, ${(d.visits ?? 0).toLocaleString("en-NZ")} visits`
+      : `${b.rows_updated.toLocaleString("en-NZ")} existing contacts, ${(d.follow_ups ?? 0).toLocaleString("en-NZ")} follow-ups`;
   if (b.kind === "hubspot_notes" && d) return `${((what === "created" ? d.notes_created : d.notes_updated) ?? 0).toLocaleString("en-NZ")} notes`;
   if (b.kind === "hubspot_email_events" && d)
     return what === "created"
@@ -42,7 +50,7 @@ function split(b: ImportBatch, what: "created" | "updated") {
 
 export default async function ImportsPage() {
   const user = await requireUser();
-  const [batches, unlinked] = await Promise.all([listImportBatches(), listUnlinkedHubspotNotes()]);
+  const [batches, unlinked, remembered] = await Promise.all([listImportBatches(), listUnlinkedHubspotNotes(), rememberedRegions()]);
   const lastContacts = batches.find((b) => b.kind === "hubspot_contacts" && b.finished_at);
 
   return (
@@ -63,6 +71,9 @@ export default async function ImportsPage() {
               added later is marked too. Receiving or opening a campaign does not count as consent.
             </p>
             <EmailEventsImport />
+          </Panel>
+          <Panel title="4. Consultant visit reports">
+            <VisitsImport remembered={remembered} />
           </Panel>
         </>
       ) : (

@@ -93,7 +93,7 @@ Never send the password or the full connection string in chat or email.
 
 ## 5. Safety checks (SQL editor, read-only)
 
-Paste and run `scripts/verify_after_migration.sql`. **Every row (17) must show `passed = true`.**
+Paste and run `scripts/verify_after_migration.sql`. **Every row (18) must show `passed = true`.**
 
 Then, in a **new tab**, run this, which compares the CRM's view of customers with the ERP's own count (the SQL editor only shows the last result in a tab):
 
@@ -130,6 +130,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 11 | `supabase/migrations/20261008000300_crm_app_statement_timeout.sql` | Done 8 Oct 2026 | 30-second limit on any CRM query (role setting on crm_app). Changes no ERP table. |
 | 12 | `supabase/migrations/20261009000100_shared_mailboxes.sql` | Done 9 Oct 2026 | Shared mailboxes and website enquiries. Changes no ERP table. |
 | 13 | `supabase/migrations/20261009000200_chase_list.sql` | Done 9 Oct 2026 | The chase list (Today page). Changes no ERP table. |
+| 14 | `supabase/migrations/20261010000100_consultant_visits.sql` | **To run** | Consultant visit reports. Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 

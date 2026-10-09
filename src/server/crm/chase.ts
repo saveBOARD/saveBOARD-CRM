@@ -36,6 +36,7 @@ export const RULE_ORDER: Record<string, number> = {
   quote_unanswered: 3,
   email_follow_up: 3.5,
   call_follow_up: 3.6,
+  visit_follow_up: 4.5,
   gone_quiet: 4,
   specifier_followup: 5,
   existing_customer_checkin: 6,
@@ -74,7 +75,7 @@ export async function countUpcoming(assignedTo?: string): Promise<number> {
   return r?.n ?? 0;
 }
 
-export const DISMISSABLE = new Set(["email_follow_up", "call_follow_up", "suggest_negotiation"]);
+export const DISMISSABLE = new Set(["email_follow_up", "call_follow_up", "visit_follow_up", "suggest_negotiation"]);
 
 type Target = { deal_id: string | null; contact_id: string | null; company_id: string | null; rule: string; title: string };
 
@@ -110,7 +111,7 @@ export async function snoozeChase(actor: Actor & { type: "user" }, taskId: strin
     else if (t.contact_id) await tx.execute(sql`update crm.contacts set snoozed_until = ${until}::date, snooze_reason = ${reason} where id = ${t.contact_id}`);
     else if (t.company_id) await tx.execute(sql`update crm.companies set snoozed_until = ${until}::date, snooze_reason = ${reason} where id = ${t.company_id}`);
     // Claude's follow-ups and suggestions are tasks in their own right: move the task instead.
-    if (t.rule === "email_follow_up" || t.rule === "call_follow_up") await tx.execute(sql`update crm.tasks set due_on = ${until}::date where id = ${taskId}`);
+    if (t.rule === "email_follow_up" || t.rule === "call_follow_up" || t.rule === "visit_follow_up") await tx.execute(sql`update crm.tasks set due_on = ${until}::date where id = ${taskId}`);
     else await tx.execute(sql`update crm.tasks set status = 'snoozed', closed_reason = 'snoozed', completed_at = now() where id = ${taskId}`);
   });
   return true;

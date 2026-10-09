@@ -46,7 +46,7 @@ const clean = (s: string | null | undefined, max = 200) => {
 };
 
 /** The next owner from the country's pair: the one after whoever got the last website-form deal. */
-async function nextOwner(entity: "NZ" | "AUS", tx: Tx): Promise<string | null> {
+export async function nextOwner(entity: "NZ" | "AUS", tx: Tx): Promise<string | null> {
   const key = entity === "NZ" ? "web_enquiry_owners_nz" : "web_enquiry_owners_aus";
   const pair = await rows<{ id: string }>(
     sql`select p.id from unnest(string_to_array((select value from crm.settings where key = ${key}), ',')) with ordinality as e(email, n)

@@ -57,6 +57,8 @@ export type ImportBatch = {
     suppression_list?: number;
     contacts_unsubscribed?: number;
     contacts_bounced?: number;
+    visits?: number; // consultant visit reports
+    follow_ups?: number;
   } | null;
 };
 

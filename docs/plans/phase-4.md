@@ -1,6 +1,6 @@
 # Phase 4 plan: call notes and consultant visits
 
-Status: **approved by Paul, 9 Oct 2026** ("approve as recommended"), with the answers below; follow-up question C on the consultant reports is open (A and B answered). Brief: `docs/DESIGN.md`, build phase 4 ("Voice notes and consultant import: the post-call voice note flow and the Excel visit import"), sections *Email and phone capture* and *Consultant visit import*, and the specifier track (deferred to this phase, 4 Oct 2026).
+Status: **approved by Paul, 9 Oct 2026** ("approve as recommended"), with the answers below; the consultant report questions A to C are answered. Brief: `docs/DESIGN.md`, build phase 4 ("Voice notes and consultant import: the post-call voice note flow and the Excel visit import"), sections *Email and phone capture* and *Consultant visit import*, and the specifier track (deferred to this phase, 4 Oct 2026).
 
 ## Goal
 
@@ -38,7 +38,7 @@ A. **Answered 9 Oct 2026:** each visit goes on the contact's timeline with the c
 
 B. **Answered 9 Oct 2026:** three reports a month, all New Zealand: **Northern** (upper North Island), **Central** (lower North Island) and **Southern** (South Island). About 6 months of back reports (18 files) to load: the import takes several files at once and asks for each file's region and month, pre-filled from the file name where it says.
 
-C. **Back-load May to August?** Recommended: yes, as history: specifiers, visits and comments recorded, but no follow-ups for those months (they're past). From September on, follow-ups as in A.
+C. **Answered 9 Oct 2026:** the older months load as **history** (no follow-ups); **September** (received 4 days earlier) loads **with** follow-ups from the comments. The upload ticks *Follow-ups* only for the latest month in a batch, and can be changed per file.
 
 ## Already in place (from phases 1 to 3)
 

@@ -17,6 +17,7 @@ const GROUP_TITLES: Record<string, string> = {
   quote_unanswered: "Quotes with no reply",
   email_follow_up: "Follow-ups due",
   call_follow_up: "Call follow-ups",
+  visit_follow_up: "Consultant visit follow-ups",
   gone_quiet: "Gone quiet",
   specifier_followup: "Specifier follow-ups",
   existing_customer_checkin: "Customer check-ins",
