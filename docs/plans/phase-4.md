@@ -1,6 +1,6 @@
 # Phase 4 plan: call notes and consultant visits
 
-Status: **approved by Paul, 9 Oct 2026** ("approve as recommended"), with the answers below; three follow-up questions on the consultant reports (A to C) are open. Brief: `docs/DESIGN.md`, build phase 4 ("Voice notes and consultant import: the post-call voice note flow and the Excel visit import"), sections *Email and phone capture* and *Consultant visit import*, and the specifier track (deferred to this phase, 4 Oct 2026).
+Status: **approved by Paul, 9 Oct 2026** ("approve as recommended"), with the answers below; follow-up question C on the consultant reports is open (A and B answered). Brief: `docs/DESIGN.md`, build phase 4 ("Voice notes and consultant import: the post-call voice note flow and the Excel visit import"), sections *Email and phone capture* and *Consultant visit import*, and the specifier track (deferred to this phase, 4 Oct 2026).
 
 ## Goal
 
@@ -34,9 +34,9 @@ Calls and consultant visits end up in the CRM as easily as email already does. A
 
 **Follow-up questions**
 
-A. **Which visits get a follow-up?** Recommended: **Priority Feedback** rows create a follow-up on the Today page; General Feedback rows are recorded (visit, comments, specifier) with no task. Otherwise about 160 follow-ups land at once every month.
+A. **Answered 9 Oct 2026:** each visit goes on the contact's timeline with the consultant's notes (a new contact and practice are created if they aren't in the CRM). Claude reads each visit's comments and picks out any action or follow-up they call for ("wants samples", "call back in March"); those become chase items, and visits that need nothing just go on the timeline.
 
-B. **Who and where.** Do the three report types come from three consultants or regions (e.g. Northern, and which are the other two)? Are they all New Zealand? The upload will ask for the region and month (pre-filled from the file name).
+B. **Answered 9 Oct 2026:** three reports a month, all New Zealand: **Northern** (upper North Island), **Central** (lower North Island) and **Southern** (South Island). About 6 months of back reports (18 files) to load: the import takes several files at once and asks for each file's region and month, pre-filled from the file name where it says.
 
 C. **Back-load May to August?** Recommended: yes, as history: specifiers, visits and comments recorded, but no follow-ups for those months (they're past). From September on, follow-ups as in A.
 

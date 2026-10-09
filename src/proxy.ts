@@ -33,5 +33,5 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   // Everything except Next.js internals (build files, images, dev live-reload) and the public images/icons.
-  matcher: ["/((?!_next/|favicon.ico|icon.png|apple-icon.png|logo.png|logo-on-dark.png).*)"],
+  matcher: ["/((?!_next/|favicon.ico|icon.png|apple-icon.png|logo.png|logo-on-dark.png|manifest.webmanifest).*)"],
 };

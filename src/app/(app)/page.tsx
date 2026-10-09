@@ -23,6 +23,7 @@ function groups(t: { stale: number; qexp: number; frd: number; cci: number }): R
     quote_expiring: { title: "Quotes about to expire", hint: `ERP quote expires within ${plural(t.qexp, "day")}` },
     quote_unanswered: { title: "Quotes with no reply", hint: `Quote sent, nothing for ${plural(t.stale, "day")}` },
     email_follow_up: { title: "Follow-ups due", hint: "Dates mentioned in emails, found by Claude" },
+    call_follow_up: { title: "Call follow-ups", hint: "Follow-up dates from your call notes" },
     gone_quiet: { title: "Gone quiet", hint: `Open deal with no activity for ${plural(t.stale, "day")}` },
     specifier_followup: { title: "Specifier follow-ups", hint: "Visited, no follow-up yet" },
     existing_customer_checkin: { title: "Customer check-ins", hint: `ERP customer, no contact for ${plural(t.cci, "day")}` },

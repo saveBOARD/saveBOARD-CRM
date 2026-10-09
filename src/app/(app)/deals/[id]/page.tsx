@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Phone } from "lucide-react";
 import { SnoozeForm } from "@/components/deals/snooze-form";
 import { StageControl } from "@/components/deals/stage-control";
 import { NoteForm } from "@/components/forms/note-form";
@@ -55,6 +55,10 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
               <Link href={`/deals/${deal.id}/edit`} className="btn-secondary">
                 <Pencil className="h-4 w-4" aria-hidden />
                 Edit
+              </Link>
+              <Link href={`/log?deal=${deal.id}${deal.primary_contact_id ? `&contact=${deal.primary_contact_id}` : ""}`} className="btn-secondary">
+                <Phone className="h-4 w-4" aria-hidden />
+                Log a call
               </Link>
               {!closed && <SnoozeForm dealId={deal.id} snoozedUntil={deal.snoozed_until} reason={deal.snooze_reason} />}
             </>

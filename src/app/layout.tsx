@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: { default: "saveBOARD CRM", template: "%s · saveBOARD CRM" },
   description: "Enquiries, deals and follow-ups for saveBOARD NZ and AUS.",
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: "saveBOARD CRM", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

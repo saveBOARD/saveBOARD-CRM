@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { Suspense } from "react";
-import { Building2, Inbox, ListChecks, SquareKanban, Upload, Users, type LucideIcon } from "lucide-react";
+import { Building2, Inbox, ListChecks, Phone, SquareKanban, Upload, Users, type LucideIcon } from "lucide-react";
 import { SearchBox } from "./search-box";
 
 type Section = { href: string; label: string; icon: LucideIcon };
@@ -13,6 +13,7 @@ type Section = { href: string; label: string; icon: LucideIcon };
 // Top-bar sections. Same pattern as the ERP: a 20px icon above a text-xs label.
 const SECTIONS: Section[] = [
   { href: "/", label: "Today", icon: ListChecks },
+  { href: "/log", label: "Log call", icon: Phone },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/deals", label: "Deals", icon: SquareKanban },
   { href: "/companies", label: "Companies", icon: Building2 },
@@ -35,7 +36,7 @@ export function TopBar({ userSlot }: { userSlot?: React.ReactNode }) {
           <span className="text-sm text-nav-ink/70">CRM</span>
         </Link>
 
-        <nav aria-label="Sections" className="flex items-stretch">
+        <nav aria-label="Sections" className="flex min-w-0 items-stretch overflow-x-auto">
           {SECTIONS.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
