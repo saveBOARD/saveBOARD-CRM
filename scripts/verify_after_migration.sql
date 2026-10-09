@@ -120,6 +120,11 @@ with checks as (
                      where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)
 
   union all
+  select 'ERP customer suggestions: recent quotes only, and similar names need a similar first word (migration 17)',
+         strpos(pg_get_functiondef('crm.refresh_quote_suggestions()'::regprocedure), '14 days') > 0
+         and strpos(pg_get_functiondef('crm.erp_customer_candidates(text, uuid)'::regprocedure), 'split_part(co.name_norm') > 0
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)
