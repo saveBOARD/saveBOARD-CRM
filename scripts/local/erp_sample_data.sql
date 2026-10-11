@@ -29,6 +29,11 @@ values
   ('20000000-0000-0000-0000-000000000004', 'NZ',  'GONE',   'Deleted Customer Ltd',  'gone@deleted.example',       null,            null, null,                                  null,  false, null,                   true,  now() - interval '30 days'),
   ('20000000-0000-0000-0000-000000000005', 'NZ',  'OLDMER', 'Old Merchant Ltd',      'buyer@oldmerchant.example',  '20th of month', null, null,                                  null,  false, null,                   false, null);
 
+-- Main contact, phone and billing address on one customer (made up), for the "fill gaps from the ERP" tests.
+update public.customers
+   set phone = '07 555 0100', contact_name = 'Sam Acme', billing_line1 = '5 Sample Street', billing_city = 'Hamilton', billing_postcode = '3200'
+ where id = '20000000-0000-0000-0000-000000000002';
+
 insert into public.customer_sites (customer_id, name, line1, city, country, is_default) values
   ('20000000-0000-0000-0000-000000000001', 'Christchurch yard', '1 Example Road', 'Christchurch', 'New Zealand', true);
 

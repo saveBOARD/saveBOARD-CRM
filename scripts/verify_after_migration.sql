@@ -125,6 +125,12 @@ with checks as (
          and strpos(pg_get_functiondef('crm.erp_customer_candidates(text, uuid)'::regprocedure), 'split_part(co.name_norm') > 0
 
   union all
+  select 'companies have phone and address; the CRM fills its empty fields from linked ERP customers (migration 18)',
+         exists (select 1 from information_schema.columns where table_schema = 'crm' and table_name = 'companies' and column_name = 'phone')
+         and exists (select 1 from information_schema.columns where table_schema = 'crm' and table_name = 'companies' and column_name = 'address')
+         and has_function_privilege('crm_app', 'crm.fill_gaps_from_erp()', 'execute')
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)

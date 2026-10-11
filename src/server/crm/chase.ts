@@ -143,12 +143,20 @@ export async function dismissChase(actor: Actor & { type: "user" }, taskId: stri
 }
 
 /** Refresh the ERP quote mirror, then turn the rules into tasks. Runs on the 10-minute job. */
-export async function refreshChaseList(): Promise<{ erpUpdated: number; opened: number; closed: number; quoteSuggestions: number }> {
+export async function refreshChaseList(): Promise<{ erpUpdated: number; opened: number; closed: number; quoteSuggestions: number; filledFromErp: number }> {
   return withActor({ type: "system", reason: "follow_up" }, async (tx) => {
     const [m] = await rows<{ n: number }>(sql`select crm.refresh_deal_erp_mirror() as n`, tx);
     const [r] = await rows<{ opened: number; closed: number }>(sql`select * from crm.refresh_chase_tasks()`, tx);
     const [q] = await rows<{ n: number }>(sql`select crm.refresh_quote_suggestions() as n`, tx);
-    return { erpUpdated: m?.n ?? 0, opened: r?.opened ?? 0, closed: r?.closed ?? 0, quoteSuggestions: q?.n ?? 0 };
+    // ERP -> CRM, empty fields only (migration 18): phone, address, city, domain, and the ERP's main contact.
+    const [f] = await rows<{ companies_filled: number; contacts_filled: number; contacts_added: number }>(sql`select * from crm.fill_gaps_from_erp()`, tx);
+    return {
+      erpUpdated: m?.n ?? 0,
+      opened: r?.opened ?? 0,
+      closed: r?.closed ?? 0,
+      quoteSuggestions: q?.n ?? 0,
+      filledFromErp: (f?.companies_filled ?? 0) + (f?.contacts_filled ?? 0) + (f?.contacts_added ?? 0),
+    };
   });
 }
 

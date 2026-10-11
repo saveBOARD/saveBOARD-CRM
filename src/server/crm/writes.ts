@@ -36,8 +36,8 @@ export async function findContactByEmail(email: string, excludeId?: string): Pro
 export async function createCompany(actor: Actor, c: CompanyInput): Promise<string> {
   return withActor(actor, async (tx) => {
     const [r] = await rows<{ id: string }>(
-      sql`insert into crm.companies (name, domain, website, segment, country_code, city, owner_id, notes, source)
-          values (${c.name}, ${c.domain}, ${c.website}, ${c.segment}, ${c.country_code}, ${c.city}, ${c.owner_id}, ${c.notes}, 'manual')
+      sql`insert into crm.companies (name, domain, website, segment, country_code, city, phone, address, owner_id, notes, source)
+          values (${c.name}, ${c.domain}, ${c.website}, ${c.segment}, ${c.country_code}, ${c.city}, ${c.phone}, ${c.address}, ${c.owner_id}, ${c.notes}, 'manual')
           returning id`,
       tx,
     );
@@ -50,7 +50,8 @@ export async function updateCompany(actor: Actor, id: string, c: CompanyInput): 
     tx.execute(sql`
       update crm.companies
          set name = ${c.name}, domain = ${c.domain}, website = ${c.website}, segment = ${c.segment},
-             country_code = ${c.country_code}, city = ${c.city}, owner_id = ${c.owner_id}, notes = ${c.notes}
+             country_code = ${c.country_code}, city = ${c.city}, phone = ${c.phone}, address = ${c.address},
+             owner_id = ${c.owner_id}, notes = ${c.notes}
        where id = ${id} and deleted_at is null`),
   );
 }

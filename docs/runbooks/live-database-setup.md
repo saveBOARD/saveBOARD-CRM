@@ -93,7 +93,7 @@ Never send the password or the full connection string in chat or email.
 
 ## 5. Safety checks (SQL editor, read-only)
 
-Paste and run `scripts/verify_after_migration.sql`. **Every row (21) must show `passed = true`.**
+Paste and run `scripts/verify_after_migration.sql`. **Every row (22) must show `passed = true`.**
 
 Then, in a **new tab**, run this, which compares the CRM's view of customers with the ERP's own count (the SQL editor only shows the last result in a tab):
 
@@ -134,6 +134,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 15 | `supabase/migrations/20261010000200_erp_quote_link.sql` | Done 10 Oct 2026 | Linking deals to ERP quotes; 5-day quote expiry warning. Changes no ERP table. |
 | 16 | `supabase/migrations/20261010000300_erp_customer_matching.sql` | Done 10 Oct 2026 | Matching ERP customers with open quotes. Changes no ERP table. |
 | 17 | `supabase/migrations/20261010000400_fewer_customer_suggestions.sql` | Done 10 Oct 2026 | Fewer, better ERP customer suggestions. Changes no ERP table. |
+| 18 | `supabase/migrations/20261011000100_fill_gaps_from_erp.sql` | **To run** | Fill empty CRM fields from linked ERP customers. Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 

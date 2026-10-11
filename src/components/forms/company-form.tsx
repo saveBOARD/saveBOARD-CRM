@@ -27,6 +27,8 @@ export function CompanyForm({ company, users, defaultOwnerId }: Props) {
         <TextField name="website" label="Website" defaultValue={v("website")} error={e.website} />
         <SelectField name="country_code" label="Country" options={countryOptions(company?.country_code)} defaultValue={v("country_code")} error={e.country_code} />
         <TextField name="city" label="City" defaultValue={v("city")} error={e.city} />
+        <TextField name="phone" label="Phone" type="tel" defaultValue={v("phone")} error={e.phone} />
+        <TextField name="address" label="Address" defaultValue={v("address")} error={e.address} className="sm:col-span-2 lg:col-span-3" />
         <TextArea name="notes" label="Notes" defaultValue={v("notes")} error={e.notes} className="sm:col-span-2 lg:col-span-4" />
       </FormCard>
       <ActionBar cancelHref={company ? `/companies/${company.id}` : "/companies"} submitLabel={company ? "Save changes" : "Create company"} pending={pending} />

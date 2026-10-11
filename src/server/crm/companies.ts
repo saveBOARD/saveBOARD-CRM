@@ -50,6 +50,8 @@ export type Company = {
   website: string | null;
   country_code: string | null;
   city: string | null;
+  phone: string | null;
+  address: string | null;
   segment: Segment;
   owner_id: string | null;
   owner: string | null;
@@ -64,7 +66,7 @@ export type Company = {
 
 export async function getCompany(id: string): Promise<Company | null> {
   const [c] = await rows<Company>(sql`
-    select c.id, ${companyDisplayName("c")} as name, c.name as raw_name, c.domain, c.website, c.country_code, c.city,
+    select c.id, ${companyDisplayName("c")} as name, c.name as raw_name, c.domain, c.website, c.country_code, c.city, c.phone, c.address,
            c.segment, c.owner_id, p.display_name as owner, c.source, c.notes, c.snoozed_until, c.snooze_reason,
            c.last_activity_at, c.hubspot_id, c.created_at
     from crm.companies c

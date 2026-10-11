@@ -84,6 +84,16 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
             )}
           </Field>
           <Field label="City">{company.city}</Field>
+          <Field label="Phone">
+            {company.phone && (
+              <a href={`tel:${company.phone.replace(/[^0-9+]/g, "")}`} className="text-link hover:underline">
+                {company.phone}
+              </a>
+            )}
+          </Field>
+          <Field label="Address" wide>
+            {company.address}
+          </Field>
           <Field label="Source">{sourceLabel(company.source)}</Field>
           <Field label="Snoozed">
             {company.snoozed_until && `Until ${formatDate(company.snoozed_until)}${company.snooze_reason ? `: ${company.snooze_reason}` : ""}`}

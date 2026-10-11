@@ -114,6 +114,15 @@ export async function settleCustomerLink(actor: Actor & { type: "user" }, entity
     await tx.execute(sql`delete from crm.erp_quote_suggestions where entity = ${entity} and erp_customer_id = ${erpCustomerId} and company_id is null and status = 'pending'`);
   });
   await refreshQuoteSuggestions();
+  await fillGapsFromErp();
+}
+
+/** ERP -> CRM, empty fields only (migration 18). Also part of every 10-minute refresh. */
+export async function fillGapsFromErp(): Promise<{ companies_filled: number; contacts_filled: number; contacts_added: number }> {
+  const [r] = await withActor({ type: "system", reason: "erp_sync" }, (tx) =>
+    rows<{ companies_filled: number; contacts_filled: number; contacts_added: number }>(sql`select * from crm.fill_gaps_from_erp()`, tx),
+  );
+  return r;
 }
 
 /** Create the CRM company (and its main contact) from the ERP customer's details, linked straight away. */

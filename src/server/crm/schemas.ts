@@ -39,6 +39,9 @@ export const companySchema = z.object({
   segment,
   country_code: country,
   city: text(100),
+  // Added 11 Oct 2026 (also filled from the ERP when empty): optional, so older callers needn't send them.
+  phone: z.string().default("").pipe(text(50)),
+  address: z.string().default("").pipe(text(300)),
   owner_id: uuidOrNull,
   notes: text(5000),
 });
