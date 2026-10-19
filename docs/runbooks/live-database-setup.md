@@ -135,7 +135,7 @@ Run each new migration the same way as step 3 (whole file, new tab, nothing high
 | 16 | `supabase/migrations/20261010000300_erp_customer_matching.sql` | Done 10 Oct 2026 | Matching ERP customers with open quotes. Changes no ERP table. |
 | 17 | `supabase/migrations/20261010000400_fewer_customer_suggestions.sql` | Done 10 Oct 2026 | Fewer, better ERP customer suggestions. Changes no ERP table. |
 | 18 | `supabase/migrations/20261011000100_fill_gaps_from_erp.sql` | Done 11 Oct 2026 | Fill empty CRM fields from linked ERP customers. Changes no ERP table. |
-| 19 | `supabase/migrations/20261020000100_erp_won_lost.sql` | **To run** | Deals follow the ERP to Quote sent, Won and Lost. Changes no ERP table. |
+| 19 | `supabase/migrations/20261020000100_erp_won_lost.sql` | Done 20 Oct 2026 | Deals follow the ERP to Quote sent, Won and Lost. Changes no ERP table. |
 
 ## If something goes wrong: full rollback
 
