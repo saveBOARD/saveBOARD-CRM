@@ -29,10 +29,13 @@ Steps 5.1 and 5.2 change only the CRM. Steps 5.3 and 5.4 need two endpoints in t
 - **Suggestions**: when a linked customer has an ERP quote that isn't on any deal, the CRM suggests linking it to their open deal (or opening a deal for it, question 2), as an item on the Today page you accept or dismiss. It never links or creates on its own.
 - The deal page gets an **ERP quote** panel: number, status, expiry, total, and the lines (product, quantity, unit price ex GST, discount). Read from `erp_read`, never stored in the CRM beyond the mirror columns already on the deal.
 
-### 5.2 Stages follow the ERP
+### 5.2 Stages follow the ERP (decided by Paul, 20 Oct 2026)
 
-- The 10-minute job runs `crm.sync_deals_from_erp()` instead of the mirror-only refresh: the mapping in the brief (above), applied only to deals with an ERP number, never to Won or Lost deals. The quote's expiry and value stay current for the chase rules.
-- A stage the ERP sets can still be changed by hand; the next sync only moves a deal when the ERP status itself changes, so a manual move sticks until the quote moves on.
+- Every 10 minutes, and when a quote is linked, linked deals move when the ERP says so:
+  - quote marked **sent** -> **Quote sent** (only from New enquiry, Contacted or Qualified; a deal in Negotiation stays);
+  - quote becomes a **sales order** (open, picked, shipped, invoiced, closed) or is **accepted** -> **Won**;
+  - quote **declined** -> **Lost** ("ERP: quote declined").
+- Draft and expired quotes don't move the deal. Won and Lost deals are never moved. A deal moves only when its ERP status changes (or on linking), so a stage set by hand sticks until the ERP moves on. Migration 19 catches up once.
 
 ### 5.3 Create the ERP customer from the CRM (needs the ERP endpoint)
 

@@ -5,7 +5,7 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 
 ## Files and run order
 
-**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 and 13 ran on 9 Oct 2026 (17 checks pass); 14 ran on 10 Oct 2026 (18 checks pass); 15 ran on 10 Oct 2026 (19 checks pass); 16 ran on 10 Oct 2026 (20 checks pass); 17 ran on 10 Oct 2026 (21 checks pass); 18 ran on 11 Oct 2026 (22 checks pass).
+**Live status:** 1 to 5 ran on 5 Oct 2026 (all checks passed); 6 and 7 ran on 6 Oct 2026, both re-run complete on 7 Oct 2026; 8 and 9 ran on 7 Oct 2026 (13 checks pass); 10 ran on 7 Oct 2026 (14 checks pass); 11 ran on 8 Oct 2026 (15 checks pass); 12 and 13 ran on 9 Oct 2026 (17 checks pass); 14 ran on 10 Oct 2026 (18 checks pass); 15 ran on 10 Oct 2026 (19 checks pass); 16 ran on 10 Oct 2026 (20 checks pass); 17 ran on 10 Oct 2026 (21 checks pass); 18 ran on 11 Oct 2026 (22 checks pass). **19 still to run.**
 
 | # | File | What it does | Touches the live ERP DB? |
 |---|---|---|---|
@@ -27,7 +27,8 @@ Target: the ERP's Supabase project (Sydney). Nothing here changes an ERP table, 
 | 16 | `20261010000300_erp_customer_matching.sql` | ERP customers with open quotes matched to CRM companies (names written differently, e.g. X-Frame / XFrame); one Today item per unlinked customer | No (reads erp_read views) |
 | 17 | `20261010000400_fewer_customer_suggestions.sql` | Fewer ERP customer suggestions (sent quotes 60 days, drafts 14 days) and stricter similar-name matching; rebuilds the open items once | No (reads erp_read views) |
 | 18 | `20261011000100_fill_gaps_from_erp.sql` | Phone and address on companies; empty CRM fields (phone, address, city, domain, main contact) filled from linked ERP customers, never overwriting | No (reads erp_read views) |
-| - | `../scripts/verify_after_migration.sql` | 22 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
+| 19 | `20261020000100_erp_won_lost.sql` | Deals follow the ERP: quote sent -> Quote sent, order -> Won, declined -> Lost (only when the ERP changes; catch-up once) | No (reads erp_read views) |
+| - | `../scripts/verify_after_migration.sql` | 23 read-only safety checks. Keep it OUT of `supabase/migrations/`. | Read-only |
 
 Files 1 to 5 live in `supabase/migrations/`. Run `supabase db push`, or paste them into the SQL editor in order. All five are idempotent and safe to re-run.
 

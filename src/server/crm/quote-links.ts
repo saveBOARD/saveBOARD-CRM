@@ -5,7 +5,7 @@ import { withActor, type Actor } from "@/server/db/actor";
 import { getErpCustomerDetail, getQuote, quoteBelongsToCompany, type Entity } from "@/server/erp";
 
 // Linking deals to ERP quotes (phase 5.1). A person links a deal to one of its customer's quotes (or accepts the CRM's
-// suggestion); the CRM then copies the quote's status, value and expiry onto the deal (refresh_deal_erp_mirror). The
+// suggestion); the CRM then copies the quote's status, value and expiry onto the deal (sync_deal_stages). The
 // ERP is never written to.
 
 export type LinkResult = { ok: true } | { ok: false; message: string };
@@ -28,7 +28,8 @@ export async function linkQuote(actor: Actor & { type: "user" }, dealId: string,
 
   await withActor(actor, async (tx) => {
     await tx.execute(sql`update crm.deals set erp_so_number = ${so} where id = ${dealId}`);
-    await tx.execute(sql`select crm.refresh_deal_erp_mirror()`);
+    // Copy the quote onto the deal, and move it to Won / Lost if it's already an order / declined (migration 19).
+    await tx.execute(sql`select crm.sync_deal_stages(false)`);
     // A suggestion for this quote is now settled.
     await tx.execute(sql`
       update crm.tasks set status = 'done', closed_reason = 'accepted', completed_at = now()
