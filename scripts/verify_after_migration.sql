@@ -135,6 +135,10 @@ with checks as (
          has_function_privilege('crm_app', 'crm.sync_deal_stages(boolean)', 'execute')
 
   union all
+  select 'ERP quote suggestions clear themselves when the quote closes or is put on a deal (migration 20)',
+         strpos(pg_get_functiondef('crm.refresh_quote_suggestions()'::regprocedure), '0b.') > 0
+
+  union all
   select 'the ERP match suggester runs with owner rights (migration 6)',
          exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'crm' and p.proname = 'suggest_erp_matches' and p.prosecdef)
